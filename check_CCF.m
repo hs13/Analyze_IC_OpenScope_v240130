@@ -202,3 +202,19 @@ end
 
 areaunitstab = table(v,c,areaunitsperses);
 open areaunitstab
+
+%%
+for ises = 1:numel(nwbsessions)
+    nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));
+
+    % take filename  with shortest length or filename that does not contain probe
+    [~, fileind] = min(cellfun(@length, {nwbfiles.name}));
+    nwbspikefile = fullfile([nwbfiles(fileind).folder filesep nwbfiles(fileind).name]);
+    % nwbspikefile = string(nwbspikefile);
+    %disp(nwbspikefile)
+    nwb = nwbRead(nwbspikefile); %, 'ignorecache');
+    unit_ids = nwb.units.id.data.load(); % array of unit ids represented within this session
+    Nneurons = length(unit_ids);
+
+    fprintf('%s %s %s %d\n', nwbsessions{ises}, nwb.general_subject.specimen_name, nwb.general_subject.genotype, Nneurons)
+end
