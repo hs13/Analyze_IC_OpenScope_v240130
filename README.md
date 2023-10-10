@@ -1,1 +1,1 @@
-# Analize_IC_OpenScope_v230821
+# Analyze_IC_OpenScope_v230821
