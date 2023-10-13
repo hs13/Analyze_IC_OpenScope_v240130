@@ -4,7 +4,7 @@
 clear all
 
 addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
-addpath(genpath('C:\Users\USER\GitHub\Analize_IC_OpenScope_v230821'))
+addpath('C:\Users\USER\GitHub\Analize_IC_OpenScope_v230821')
 addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
 
 datadir = 'S:\OpenScopeData\00248_v230821\';

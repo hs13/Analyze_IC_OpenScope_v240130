@@ -16,7 +16,7 @@ visareas = {'AM', 'PM', 'V1', 'LM', 'AL', 'RL'};
 visind = [6 5 1 2 4 3];
 
 %% probevisareas
-probevisareas = cell(Nsessions,numel(probes));
+probevisareas = cell(numel(probes), Nsessions);
 for ises = 1:numel(nwbsessions)
     clearvars -except ises nwbsessions datadir probevisareas probes
     sesclk = tic;
@@ -122,7 +122,7 @@ for ises = 1:numel(nwbsessions)
         %         disp(unique(neuloc(contains(neuloc, 'VIS')))')
         % probevisareas{ises, iprobe} = sprintf('%s ',unique(neuloc(contains(neuloc, 'VIS'))));
         tempcell = unique(neuloc(contains(neuloc, 'VIS')));
-        probevisareas{ises, iprobe} = sprintf('%s ',tempcell{:});
+        probevisareas{iprobe, ises} = sprintf('%s ',tempcell{:});
     end
 end
 open probevisareas
