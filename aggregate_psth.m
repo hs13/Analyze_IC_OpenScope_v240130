@@ -4,7 +4,7 @@ addpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v230821')
 
 datadir = 'S:\OpenScopeData\00248_v230821\';
 nwbdir = dir(datadir);
-nwbsessions = {nwbdir.name}; 
+nwbsessions = {nwbdir.name};
 nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
     ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
 Nsessions = numel(nwbsessions);
@@ -18,45 +18,45 @@ visind = [6 5 1 2 4 3];
 % kergauss = normpdf( (-kerwinhalf:kerwinhalf)', 0,kersigma);
 % kergauss = (kergauss/sum(kergauss));
 
-%% 
+%%
 probevisareas = cell(numel(probes), Nsessions);
 for ises = 1:Nsessions
     fprintf('Session %d/%d %s\n', ises, Nsessions, nwbsessions{ises} )
-    
+
     pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
     load([pathpp 'info_electrodes.mat']) %'electrode_probeid', 'electrode_localid', 'electrode_id', 'electrode_location', '-v7.3')
     load([pathpp 'info_units.mat']) %'unit_ids', 'unit_peakch', 'unit_times_idx', 'unit_wfdur'
-    
+
     elecid = electrode_id+1;
     revmapelecid = NaN(max(elecid),1);
     revmapelecid(elecid) = 1:numel(elecid);
-    
+
     for iprobe = 1:numel(probes)
-                
+
         % if exist([pathpp, 'probes.mat'], 'file')
         %     probelist = load([pathpp, 'probes.mat']);
         %     warning('HS 230126: this was inserted to handle the exception case of sub_1183369803, can delete with the next nwb update')
         % else
-            probelist.probes = {'A', 'B', 'C', 'D', 'E', 'F'};
+        probelist.probes = {'A', 'B', 'C', 'D', 'E', 'F'};
         % end
         probeind = find( strcmp(probes{iprobe}, probelist.probes) );
         %probeind = find( strcmp(probes{iprobe}, {'A', 'B', 'C', 'D', 'E', 'F'}) );
 
-%         if ~isequal(unique(floor(unit_peakch(neuoind)/1000)), probeind-1)
-%             error('check neuoind')
-%         end
+        %         if ~isequal(unique(floor(unit_peakch(neuoind)/1000)), probeind-1)
+        %             error('check neuoind')
+        %         end
         neuoind = find(floor(unit_peakch/1000)==probeind-1);
-        
+
         % check whether CCF registration is correct
         probelocs = electrode_location(ismember(electrode_id, unit_peakch(neuoind)));
-        
+
         neuloc = electrode_location(revmapelecid(unit_peakch(neuoind)+1));
         if ~isequal(unique(probelocs), unique(neuloc))
             disp(unique(neuloc)')
             error('check neuloc')
         end
-%         disp(probes{iprobe})
-%         disp(unique(neuloc(contains(neuloc, 'VIS')))')
+        %         disp(probes{iprobe})
+        %         disp(unique(neuloc(contains(neuloc, 'VIS')))')
 
         % probevisareas{iprobe, ises} = sprintf('%s ',unique(neuloc(contains(neuloc, 'VIS'))));
         tempcell = unique(neuloc(contains(neuloc, 'VIS')));
@@ -181,66 +181,66 @@ for ises = 1:Nsessions
     load([pathpp 'info_units.mat']) %'unit_ids', 'unit_peakch', 'unit_times_idx', 'unit_wfdur'
     load([pathpp 'qc_units.mat']) %'unit_amplitude', 'unit_isi_violations', 'unit_wfdur', 'unit_amplitude_cutoff', 'unit_presence_ratio'
 
-unit_amplitude_agg{ises} = unit_amplitude;
-unit_isi_violations_agg{ises} = unit_isi_violations;
-unit_wfdur_agg{ises} = unit_wfdur;
-unit_amplitude_cutoff_agg{ises} = unit_amplitude_cutoff;
-unit_presence_ratio_agg{ises} = unit_presence_ratio;
+    unit_amplitude_agg{ises} = unit_amplitude;
+    unit_isi_violations_agg{ises} = unit_isi_violations;
+    unit_wfdur_agg{ises} = unit_wfdur;
+    unit_amplitude_cutoff_agg{ises} = unit_amplitude_cutoff;
+    unit_presence_ratio_agg{ises} = unit_presence_ratio;
 
     elecid = electrode_id+1;
     revmapelecid = NaN(max(elecid),1);
     revmapelecid(elecid) = 1:numel(elecid);
-    
+
     for iprobe = 1:numel(probes)
-        
+
         probelist.probes = {'A', 'B', 'C', 'D', 'E', 'F'};
         probeind = find( strcmp(probes{iprobe}, probelist.probes) );
         %probeind = find( strcmp(probes{iprobe}, {'A', 'B', 'C', 'D', 'E', 'F'}) );
-        
+
         if nnz(floor(unit_peakch/1000)==probeind-1)==0
             fprintf('Probe %s Area %s: NO UNITS!!!\n', probes{iprobe}, visareas{iprobe} )
             continue
         end
-%         tic
+        %         tic
         load(sprintf('%spostprocessed_probe%s.mat', pathpp, probes{iprobe}), 'neuoind')
-%         % 'neuoind', 'vis', 'Tres', 'psthtli', 'psth'
+        %         % 'neuoind', 'vis', 'Tres', 'psthtli', 'psth'
         load(sprintf('%svisresponses_probe%s.mat', pathpp, probes{iprobe}))
         % 'meanFRvec', 'sponFRvec', 'ICtrialtypes', 'ICsig', 'RFCI', 'sizeCI', 'oriparams'
-        
+
         if ~isequal(unique(floor(unit_peakch(neuoind)/1000)), probeind-1)
             error('check neuoind')
         end
         % neuoind = find(floor(unit_peakch/1000)==probeind-1);
-        
+
         % check whether CCF registration is correct
         probelocs = electrode_location(ismember(electrode_id, unit_peakch(neuoind)));
-        
+
         neuloc = electrode_location(revmapelecid(unit_peakch(neuoind)+1));
         if ~isequal(unique(probelocs), unique(neuloc))
             disp(unique(neuloc)')
             error('check neuloc')
         end
-        
+
         neuctx = contains(neuloc, 'VIS');
         fprintf('Probe %s Area %s: %d/%d\n', probes{iprobe}, visareas{iprobe}, nnz(neuctx), numel(neuoind) )
-%         disp(unique(probelocs)')
-        
+        %         disp(unique(probelocs)')
+
         neuoindagg{iprobe, ises} = neuoind;
         probeneuagg{iprobe, ises} = iprobe*ones(length(neuoind),1);
         neulocagg{iprobe, ises} = neuloc;
         neupeakchagg{iprobe, ises} = unit_peakch(neuoind);
         neuctxagg{iprobe, ises} = neuctx;
-        
+
         sesneuagg{iprobe, ises} = ises*ones(length(neuoind),1);
         % sesneuctxagg{iprobe} = cat(1, sesneuctxagg{iprobe}, ises*ones(nnz(neuctx),1));
-        
+
         meanFRvecagg{iprobe, ises} = meanFRvec';
         sponFRvecagg{iprobe, ises} = sponFRvec';
-        
+
         for b = 1:numel(ICblocks)
             ICsigagg.(ICblocks{b}){iprobe,ises} = ICsig.(ICblocks{b});
         end
-        
+
         RFCIagg{iprobe,ises} = RFCI;
         RFCIspinagg{iprobe,ises} = RFCIspin;
         sizeCIagg{iprobe,ises} = sizeCI;
@@ -248,7 +248,7 @@ unit_presence_ratio_agg{ises} = unit_presence_ratio;
         ori4paramsagg{iprobe,ises} = ori4params;
 
     end
-    
+
 end
 
 Nrfs = size(RFCI.Rrfclassic, 2);
@@ -291,32 +291,32 @@ for b = 1:numel(ICblocks)
 end
 
 RFCIall = struct();
+temp = cat(1,RFCIagg{:});
 for f= 1:numel(RFCIfields)
-    temp = cat(1,RFCIagg{:});
     RFCIall.(RFCIfields{f}) = cat(1,temp.(RFCIfields{f}));
 end
 
 RFCIspinall = struct();
+temp = cat(1,RFCIspinagg{:});
 for f= 1:numel(RFCIspinfields)
-    temp = cat(1,RFCIspinagg{:});
     RFCIspinall.(RFCIspinfields{f}) = cat(1,temp.(RFCIspinfields{f}));
 end
 
 sizeCIall = struct();
+temp = cat(1,sizeCIagg{:});
 for f= 1:numel(sizeCIfields)
-    temp = cat(1,sizeCIagg{:});
     sizeCIall.(sizeCIfields{f}) = cat(1,temp.(sizeCIfields{f}));
 end
 
 oriparamsall = struct();
+temp = cat(1,oriparamsagg{:});
 for f= 1:numel(oriparamsfields)
-    temp = cat(1,oriparamsagg{:});
     oriparamsall.(oriparamsfields{f}) = cat(1,temp.(oriparamsfields{f}));
 end
 
 ori4paramsall = struct();
+temp = cat(1,ori4paramsagg{:});
 for f= 1:numel(ori4paramsfields)
-    temp = cat(1,ori4paramsagg{:});
     ori4paramsall.(ori4paramsfields{f}) = cat(1,temp.(ori4paramsfields{f}));
 end
 
@@ -345,12 +345,12 @@ save(['S:\OpenScopeData\00248_v230821\postprocessed\openscope_popavg_all.mat'], 
 %% aggregate Ron Roff and psthagg
 aggpsth = true;
 if ~aggpsth
-probesR = {'C'};
+    probesR = {'C'};
 else
     probesR = probes;
 end
 
-load([pathpp 'postprocessed_probeC.mat'], 'psthtli', 'vis')
+load('S:\OpenScopeData\00248_v230821\postprocessed\sub-619296\postprocessed_probeC.mat', 'psthtli', 'vis')
 Nneuronsall = numel(sesneuall);
 
 visblocks = {'ICkcfg0_presentations','ICkcfg1_presentations','ICwcfg0_presentations','ICwcfg1_presentations', ...
@@ -360,8 +360,8 @@ vistrialtypesagg = struct();
 vistrialrepagg = struct();
 vistrialorderagg = struct();
 if aggpsth
-psthavgall = struct();
-psthsemall = struct();
+    psthavgall = struct();
+    psthsemall = struct();
 end
 Ronavgall = struct();
 Roffavgall = struct();
@@ -390,11 +390,11 @@ for ises = 1:Nsessions
     pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
     load([pathpp 'info_electrodes.mat']) %'electrode_probeid', 'electrode_localid', 'electrode_id', 'electrode_location', '-v7.3')
     load([pathpp 'info_units.mat']) %'unit_ids', 'unit_peakch', 'unit_times_idx', 'unit_wfdur'
-    
+
     elecid = electrode_id+1;
     revmapelecid = NaN(max(elecid),1);
     revmapelecid(elecid) = 1:numel(elecid);
-    
+
     for iprobe = 1:numel(probesR)
         tic
         probelist.probes = {'A', 'B', 'C', 'D', 'E', 'F'};
@@ -404,36 +404,36 @@ for ises = 1:Nsessions
             warning('%s: Probe%s does not exist', nwbsessions{ises}, probesR{iprobe})
             continue
         end
-           
+
         tempneusesprobe = sesneuall==ises & probeneuall==probeind;
 
         load(sprintf('%spostprocessed_probe%s.mat', pathpp, probesR{iprobe}))
         % 'neuoind', 'vis', 'Tres', 'psthtli', 'psth'
         %     load(sprintf('%svisresponses_probe%s.mat', pathpp, probesR{iprobe}))
         %     % 'meanFRvec', 'sponFRvec', 'ICtrialtypes', 'ICsig', 'RFCI', 'sizeCI', 'oriparams'
-        
+
         if ~isequal(unique(floor(unit_peakch(neuoind)/1000)), probeind-1)
             error('check neuoind')
         end
         if numel(neuoind) ~= nnz(tempneusesprobe)
             error('check neuoind/sesneuall/probeneuall')
         end
-        
+
         % check whether CCF registration is correct
         probelocs = electrode_location(ismember(electrode_id, unit_peakch(neuoind)));
-        
+
         neuloc = electrode_location(revmapelecid(unit_peakch(neuoind)+1));
         if ~isequal(unique(probelocs), unique(neuloc))
             disp(unique(neuloc)')
             error('check neuloc')
         end
-        
+
         neuctx = contains(neuloc, 'VIS');
-        
+
         fprintf('Probe %s Area %s: %d/%d\n', probesR{iprobe}, visareas{iprobe}, nnz(neuctx), numel(neuoind) )
         disp(unique(probelocs)')
-        
-        
+
+
         % visblocks = {'ICkcfg0_presentations','ICkcfg1_presentations','ICwcfg0_presentations','ICwcfg1_presentations', ...
         %     'RFCI_presentations','sizeCI_presentations'}; %,'spontaneous_presentations'};
         %ICblocks: each stim is 0.4s, inter-trial interval is 0.4s, static images
@@ -447,7 +447,7 @@ for ises = 1:Nsessions
                 vistrialtypesagg(ises).(visblocks{b}) = unique(vis.(visblocks{b}).trialorder(1:4:end));
                 vistrialorderagg(ises).(visblocks{b}) = vis.(visblocks{b}).trialorder(1:4:end);
             end
-            
+
             if ismember(visblocks{b}, ICblocks)
                 tlon = psthtli>0 & psthtli<=400;
                 tloff = psthtli>400 & psthtli<=800;
@@ -460,7 +460,7 @@ for ises = 1:Nsessions
             else
                 error('vis block not recognized')
             end
-            
+
             Ntt = numel(vistrialtypesagg(ises).(visblocks{b}));
             vistrialrepagg(ises).(visblocks{b}) = zeros(Ntt,1);
 
@@ -492,15 +492,14 @@ for ises = 1:Nsessions
             Ronstdall.(visblocks{b})(tempneusesprobe,:) = tempRonstd ;
             Roffstdall.(visblocks{b})(tempneusesprobe,:) = tempRoffstd ;
         end
-        
+
         % size vector [0, 4, 8, 16, 32, 64 ]
         toc
     end
-    
+
 end
 
-%%%%%%%%%% TODO: ADD SANITY CHECK THAT THERE ARE NO NAN VALUES %%%%%%%%%% 
-for b = 5:numel(visblocks)
+for b = 1:numel(visblocks)
     tic
     n1 = nnz(isnan(psthavgall.(visblocks{b})));
     n2 = nnz(isnan(psthsemall.(visblocks{b})));
