@@ -8,7 +8,7 @@ nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
     ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
 Nsessions = numel(nwbsessions);
 
-gazedistthresh = 20;
+gazedistthresh = 10;
 
 % A-AM, B-PM, C-V1, D-LM, E-AL, F-RL
 probes = {'A', 'B', 'C', 'D', 'E', 'F'};
@@ -379,7 +379,7 @@ if ~isequal(floor(neupeakchall/1000), probeneuall-1)
 end
 
 %%
-save(['S:\OpenScopeData\00248_v230821\postprocessed\openscope_popavg_fixedgazeall.mat'], ...
+save(['S:\OpenScopeData\00248_v230821\postprocessed\openscope_popavg_fixedgazeall_', num2str(gazedistthresh), 'pix.mat'], ...
     'gazedistthresh', 'probes', 'visblocks', 'ICblocks', ...
     'nwbsessions', 'neuoindall', 'probeneuall', 'neulocall', 'neupeakchall', 'sesneuall', 'neuctxall', ...
     'meanFRvecall', 'sponFRvecall', 'vis', ...
@@ -408,7 +408,7 @@ vistrialorder_fixedgazeagg = struct();
 vistrial_fixedgazeagg = struct();
 if aggpsth
 psthavg_fixedgazeall = struct();
-psthsem_fixedgazeall = struct();
+% psthsem_fixedgazeall = struct();
 end
 Ronavg_fixedgazeall = struct();
 Roffavg_fixedgazeall = struct();
@@ -423,7 +423,7 @@ for b = 1:numel(visblocks)
     for iprobe = 1:numel(probesR)
         if aggpsth
             psthavg_fixedgazeall.(visblocks{b}) = NaN(length(psthtli), Ntt, Nneuronsall);
-            psthsem_fixedgazeall.(visblocks{b}) = NaN(length(psthtli), Ntt, Nneuronsall);
+            % psthsem_fixedgazeall.(visblocks{b}) = NaN(length(psthtli), Ntt, Nneuronsall);
         end
         Ronavg_fixedgazeall.(visblocks{b}) = NaN(Nneuronsall,Ntt);
         Roffavg_fixedgazeall.(visblocks{b}) = NaN(Nneuronsall,Ntt);
@@ -556,7 +556,7 @@ for ises = 1:Nsessions
 
             if aggpsth
                 psthavg_fixedgazeall.(visblocks{b})(:,:,tempneusesprobe) = temppsth;
-                psthsem_fixedgazeall.(visblocks{b})(:,:,tempneusesprobe) = temppsthsem;
+                % psthsem_fixedgazeall.(visblocks{b})(:,:,tempneusesprobe) = temppsthsem;
             end
             Ronavg_fixedgazeall.(visblocks{b})(tempneusesprobe,:) = tempRonavg ;
             Roffavg_fixedgazeall.(visblocks{b})(tempneusesprobe,:) = tempRoffavg ;
@@ -573,7 +573,8 @@ end
 for b = 1:numel(visblocks)
     tic
     invalidsessions1 = unique(sesneuall( squeeze( all(isnan(psthavg_fixedgazeall.(visblocks{b})), [1,2]) ) ));
-    invalidsessions2 = unique(sesneuall( squeeze( all(isnan(psthsem_fixedgazeall.(visblocks{b})), [1,2]) ) ));
+    % invalidsessions2 = unique(sesneuall( squeeze( all(isnan(psthsem_fixedgazeall.(visblocks{b})), [1,2]) ) ));
+    invalidsessions2 = invalidsessions1;
     invalidsessions3 = unique(sesneuall( all(isnan(Ronavg_fixedgazeall.(visblocks{b})), 2) ));
     invalidsessions4 = unique(sesneuall( all(isnan(Roffavg_fixedgazeall.(visblocks{b})), 2) ));
     invalidsessions5 = unique(sesneuall( all(isnan(Ronstd_fixedgazeall.(visblocks{b})), 2) ));
@@ -592,13 +593,13 @@ for b = 1:numel(visblocks)
 end
 
 if aggpsth
-    save(['S:\OpenScopeData\00248_v230821\postprocessed\openscope_psthavg_fixedgazeall.mat'], ...
+    save(['S:\OpenScopeData\00248_v230821\postprocessed\openscope_psthavg_fixedgazeall_', num2str(gazedistthresh), 'pix.mat'], ...
         'probes', 'visareas', 'visind', 'nwbsessions', ...
         'neuoindall', 'probeneuall', 'neulocall', 'neupeakchall', 'sesneuall', 'neuctxall', ...
         'unit_amplitude_all', 'unit_isi_violations_all', 'unit_wfdur_all', 'unit_amplitude_cutoff_all', 'unit_presence_ratio_all', ...
         'vistrialtypes_fixedgazeagg', 'vistrialrep_fixedgazeagg', 'vistrialorder_fixedgazeagg', 'vistrial_fixedgazeagg', ...
         'ICblocks', 'ICtrialtypes', 'psthtli', 'psthavg_fixedgazeall', 'Ronavg_fixedgazeall', 'Roffavg_fixedgazeall', ...
-        'psthsem_fixedgazeall', 'Ronstd_fixedgazeall', 'Roffstd_fixedgazeall', '-v7.3')
+        'Ronstd_fixedgazeall', 'Roffstd_fixedgazeall', '-v7.3') %'psthsem_fixedgazeall', 
 end
 
 %% MATCH BETWEEN CRF POSITION FOR ALL TRIALS VS FIXED GAZE TRIALS: ~63% neurons show match

@@ -4,21 +4,17 @@ addpath('C:\Users\USER\GitHub\Analize_IC_OpenScope_v230821')
 addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
 
 datadir = 'S:\OpenScopeData\00248_v230821\';
-% nwbdir = dir(datadir);
-% nwbsessions = {nwbdir.name}; 
-% nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
-%     ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
 
-whichnwbsession = 'sub-630506';
+% whichnwbsession = 'sub-630506';
+% nwbfiles = cat(1, dir([datadir whichnwbsession filesep '*.nwb']), dir([datadir whichnwbsession filesep '*' filesep '*.nwb']));
+% % take filename  with shortest length or filename that does not contain probe
+% [~, fileind] = min(cellfun(@length, {nwbfiles.name}));
+% nwbspikefile = fullfile([nwbfiles(fileind).folder filesep nwbfiles(fileind).name]);
+% % nwbspikefile = string(nwbspikefile);
+% disp(nwbspikefile)
 
-nwbfiles = cat(1, dir([datadir whichnwbsession filesep '*.nwb']), dir([datadir whichnwbsession filesep '*' filesep '*.nwb']));
-
-% take filename  with shortest length or filename that does not contain probe
-[~, fileind] = min(cellfun(@length, {nwbfiles.name}));
-nwbspikefile = fullfile([nwbfiles(fileind).folder filesep nwbfiles(fileind).name]);
-% nwbspikefile = string(nwbspikefile);
-disp(nwbspikefile)
-nwb = nwbRead(nwbspikefile); %, 'ignorecache');
+nwbspikefile = "G:\My Drive\RESEARCH\sub-625554_ses-1181330601-acq-FINAL_ogen.nwb";
+nwb = nwbRead(nwbspikefile); 
 
 pathpp = [datadir 'postprocessed' filesep whichnwbsession filesep];
 

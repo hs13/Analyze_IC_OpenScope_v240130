@@ -223,6 +223,8 @@ for ises = 1:Nsessions
 end
 
 gazedistthresh = 20;
+propfixedgazetrials = zeros(Nsessions,1);
+propfixcrftrials = zeros(Nsessions,1);
 figure
 for ises = 1:Nsessions
     subplot(3,5,ises); hold all
@@ -239,6 +241,9 @@ for ises = 1:Nsessions
     tempgazedist = trialmaxdistmodecomagg(ises).RFCI_presentations(1:4:end);
     templikelyblink = triallikelyblinkagg(ises).RFCI_presentations(1:4:end);
     temptrialsfixedgaze = tempgazedist<gazedistthresh & ~templikelyblink;
+    propfixedgazetrials(ises) = mean(temptrialsfixedgaze);
+    propfixcrftrials(ises) = mean(temptrialsfixedgaze(floor(temptrialorder/10000) == 0));
+    
     validRFCIfix = true;
     fixcrftrials = temptrialsfixedgaze & floor(temptrialorder/10000) == 0;% &
     if ~isequal( unique(floor(mod(temptrialorder(fixcrftrials), 1000) / 10)), (0:8)' )
@@ -249,8 +254,10 @@ for ises = 1:Nsessions
     else
         titcol = [0.5 0.5 0.5];
     end
-    title(sprintf('validRFCI %d %s: 8 vis deg ~%.0f pix\nwidth pupil %.0f eye %.0f', ...
-        validRFCIfix, nwbsessions{ises}, pix8visdeg(ises), pupilwidth(ises), eyewidth(ises) ), 'Color', titcol)
+    % title(sprintf('validRFCI %d %s: 8 vis deg ~%.0f pix\nwidth pupil %.0f eye %.0f', ...
+    %     validRFCIfix, nwbsessions{ises}, pix8visdeg(ises), pupilwidth(ises), eyewidth(ises) ), 'Color', titcol)
+    title(sprintf('validRFCI %d %s: 8 vis deg ~%.0f pix\nfixed-gaze trials %.0f%%', ...
+        validRFCIfix, nwbsessions{ises}, pix8visdeg(ises), 100*mean(temptrialsfixedgaze) ), 'Color', titcol)
 end
 
 %% fixed gaze psthall and Rall
@@ -273,7 +280,7 @@ for ises = 1:Nsessions
     end
     visblocks = {'ICkcfg0_presentations','ICkcfg1_presentations','ICwcfg0_presentations','ICwcfg1_presentations', ...
         'RFCI_presentations','sizeCI_presentations'}; %,'spontaneous_presentations'};
-    gazedistthresh = 20;
+    gazedistthresh = 10;
     
     trackeyetli = trialdistmodecom.RFCI_presentations.trackeyetli;
     trackeyetrialinds = trialdistmodecom.RFCI_presentations.psthtrialinds;
