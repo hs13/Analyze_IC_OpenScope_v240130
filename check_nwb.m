@@ -1,6 +1,6 @@
 % requested by Ahad: Could you look at sub-630506_ses-1192952692_ogen.nwb just to confirm everything looks correct?
 addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
-addpath('C:\Users\USER\GitHub\Analize_IC_OpenScope_v230821')
+addpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v230821')
 addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
 
 datadir = 'S:\OpenScopeData\00248_v230821\';
@@ -16,7 +16,3 @@ datadir = 'S:\OpenScopeData\00248_v230821\';
 nwbspikefile = "G:\My Drive\RESEARCH\sub-625554_ses-1181330601-acq-FINAL_ogen.nwb";
 nwb = nwbRead(nwbspikefile); 
 
-pathpp = [datadir 'postprocessed' filesep whichnwbsession filesep];
-
-
-nwb_new = nwbRead();
