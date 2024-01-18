@@ -1,45 +1,3 @@
-% requested by Ahad: Could you look at sub-630506_ses-1192952692_ogen.nwb just to confirm everything looks correct?
-addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
-addpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v230821')
-addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
-
-
-% nwbspikefile = "G:\My Drive\RESEARCH\IllusionOpenScope\sub-625554_ses-1181330601-acq-FINAL_ogen.nwb";
-% nwbspikefile = "G:\My Drive\RESEARCH\IllusionOpenScope\sub-625554_ses-1181330601.nwb";
-% nwbspikefile = "G:\My Drive\RESEARCH\IllusionOpenScope\sub-625554_ses-1181330601_ogen.nwb";
-nwbspikefile = "G:\My Drive\RESEARCH\IllusionOpenScope\sub-619296_ses-1187930705_ogen.nwb";
-nwb = nwbRead(nwbspikefile); 
-
-%% check opto
-optopsth_v230821 = load('S:\OpenScopeData\00248_v230821\postprocessed\sub-625554\psth_opto_probeC.mat');
-optostim_v230821 = optopsth_v230821.opto.actualcond(optopsth_v230821.opto.optotrials)';
-
-optocond = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').vectordata.get('condition').data.load();
-optostim = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').vectordata.get('stimulus_name').data.load();
-optodur = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').vectordata.get('duration').data.load();
-optolevel = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').vectordata.get('level').data.load();
-
-% "A Single
-% unique(optocond)
-%     {'1 second square pulse: continuously on for 1s'}
-%     {'10 ms pulses at 1 Hz'                         }
-%     {'2 ms pulses at 1 Hz'                          }
-%     {'A single 30hz pulse'                          }
-%     {'A single 40hz pulse'                          }
-%     {'A single 50hz pulse'                          }
-%     {'a single 10hz pulse'                          }
-%     {'a single 20hz pulse'                          }
-%     {'a single 5hz pulse'                           }
-%     {'a single 60hz pulse'                          }
-%     {'a single 80hz pulse'                          }
-%     {'cosine pulse'                                 }
-
-
-temp = [optostim, optostim_v230821];
-sprintf('')
-tmp = sortrows(temp,1);
-unique(tmp, 'rows')
-
 %% check vis
 % changes in visblock keys 
 % in IC blocks, "frame" -> "Image"
@@ -48,12 +6,9 @@ unique(tmp, 'rows')
 % request adding fields: trialorder, trialtypedescription,
 % MaskDiaVisDeg (RFCI_presentations and sizeCI_presentations),
 % RFcentersVisDeg (RFCI_presentations)
-visblocks = nwb.intervals.keys;
-for b = 1:numel(visblocks)
-    disp(visblocks{b})
-    viskeys =  nwb.intervals.get(visblocks{b}).vectordata.keys;
-    disp(viskeys)
-end
+
+nwbspikefile = "G:\My Drive\RESEARCH\IllusionOpenScope\sub-625554_ses-1181330601_ogen.nwb";
+nwb = nwbRead(nwbspikefile); 
 
 visblocks = nwb.intervals.keys;
 vis = struct();
@@ -192,66 +147,5 @@ for b = 1:numel(visblocks)
         vis.(visblocks{b}).trialtypedescription = ['10000s: classic 0 vs inverse 1,', ...
             ' 1000s which ctrsizes, 10-100s: which RFcenter, 1s: which direction'];
     end
-
     % disp(unique(vis.(visblocks{b}).trialorder)')
-
-end
-
-%% stimulus_templates order is still inconsistent with image file name order in all blocks
-% This is especially a problem in the four IC blocks (ICwcfg1, ICwcfg0,
-% ICkcfg1, ICkcfg0) because the "Image" (used to be "frame") field numbers
-% do not match up with the stimulus_templates order...
-% I really think the best way to avoid confusion would be to call them by their actual file names (110000, 110101, etc) instead of "ICwcfg1_presentations0", "ICwcfg1_presentations1", etc.
-
-Nblocks2plot = numel(visblocks)-1;
-figure
-for b = 1:Nblocks2plot;%numel(visblocks)-1
-    disp(visblocks{b})
-        if contains(visblocks{b}, 'IC')
-            trialtypes = vis.(visblocks{b}).ICtrialtypes;
-        else
-            trialtypes = unique(vis.(visblocks{b}).trialorder);
-        end
-    imkeys = nwb.stimulus_templates.get(visblocks{b}).image.keys;
-    for ii = 1:numel(imkeys)
-        %tempim=nwb.stimulus_templates.get(visblocks{b}).image.get(imkeys{ii}).data.load();
-        tempimkey = [visblocks{b} num2str(ii-1)];
-        tempim=nwb.stimulus_templates.get(visblocks{b}).image.get(tempimkey).data.load();
-        if size(tempim,1)==3
-            tempim = permute(tempim, [3 2 1]);
-        else
-            tempim = permute(tempim, [2 1]);
-        end
-        subplot(Nblocks2plot, 22, 22*(b-1)+ii)
-        imshow(tempim)
-        if contains(visblocks{b}, 'RFCI')
-            hold on
-            plot(size(tempim,1)/2*[1 1], [0.5 size(tempim,2)+0.5], 'r-')
-            plot([0.5 size(tempim,1)+0.5], size(tempim,2)/2*[1 1], 'r-')
-        end
-        % title([num2str(trialtypes(ii)) ': ' imkeys{ii}], 'FontSize', 8)
-        title(trialtypes(ii), 'FontSize', 8)
-    end
-end
-
-visICblocks = {'visICtxiwcfg1', 'visICtxiwcfg0', 'visICtxikcfg1', 'visICtxikcfg0'};
-blankno = [110000 100000 010000 000000];
-figure
-for b = 1:numel(visICblocks)
-for ii = 1:numel(ICtrialtypes)
-    tempim = imread(['G:\My Drive\RESEARCH\IllusionOpenScope\IllusionOpenScope_220314\' visICblocks{b} '\' sprintf('%06d', blankno(b)+ICtrialtypes(ii)), '.tif']);
-subplot(numel(visICblocks),numel(ICtrialtypes), numel(ICtrialtypes)*(b-1)+ii)
-imshow(tempim)
-title(ICtrialtypes(ii))
-end
-end
-
-for b = 1:numel(visICblocks)
-figure
-for ii = 1:numel(ICtrialtypes)
-    tempim = imread(['G:\My Drive\RESEARCH\IllusionOpenScope\IllusionOpenScope_220314\' visICblocks{b} '\' sprintf('%06d', blankno(b)+ICtrialtypes(ii)), '.tif']);
-        subplot(4,6,ii)
-imshow(tempim)
-title(ICtrialtypes(ii))
-end
 end
