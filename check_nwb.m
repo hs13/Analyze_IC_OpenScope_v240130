@@ -194,10 +194,9 @@ for b = 1:numel(visblocks)
     end
 
     % disp(unique(vis.(visblocks{b}).trialorder)')
-
 end
 
-%% stimulus_templates order is still inconsistent with image file name order in all blocks
+%% check that stimulus_templates order is consistent with image file name order in all blocks
 % This is especially a problem in the four IC blocks (ICwcfg1, ICwcfg0,
 % ICkcfg1, ICkcfg0) because the "Image" (used to be "frame") field numbers
 % do not match up with the stimulus_templates order...
@@ -234,6 +233,7 @@ for b = 1:Nblocks2plot;%numel(visblocks)-1
     end
 end
 
+
 visICblocks = {'visICtxiwcfg1', 'visICtxiwcfg0', 'visICtxikcfg1', 'visICtxikcfg0'};
 blankno = [110000 100000 010000 000000];
 figure
@@ -254,4 +254,104 @@ for ii = 1:numel(ICtrialtypes)
 imshow(tempim)
 title(ICtrialtypes(ii))
 end
+end
+
+
+%% IC blocks figure
+ICblocksimgs = zeros(1200, 1200*8);
+
+for b = 1:4
+    tempimkey = [visblocks{b} '0'];
+    tempim = nwb.stimulus_templates.get(visblocks{b}).image.get(tempimkey).data.load();
+end
+
+
+%% RFCI and sizeCI example figure
+
+%% all image figure
+% figure out number of pixelsthat correspond to 16 degrees
+tempim = nwb.stimulus_templates.get('ICwcfg0_presentations').image.get('ICwcfg0_presentations0').data.load();
+tempim = tempim';
+tempvec = tempim(size(tempim,1)/2,:);
+tempcumvec = cumsum(double(tempvec));
+visdeg16 = nnz(tempcumvec==tempcumvec(round(length(tempcumvec)/2)));
+
+% figure; hold all
+% plot(tempcumvec, 'linewidth', 1)
+% plot(visdeg16*[-0.5 0.5]+round(length(tempcumvec)/2), tempcumvec(round(length(tempcumvec)/2))*[1 1], 'r-')
+% figure; hold all
+% plot(tempim(:,size(tempim,2)/2), 'k-', 'linewidth', 2)
+% plot(visdeg16*[-0.5 0.5]+round(size(tempim,1)/2),[0 0], 'r-', 'linewidth', 1)
+
+% images are 1920 by 1200
+ICtrialtypedescription = {'Blank', 'X', 'T_C_1', 'I_C_1', 'L_C_1', 'T_C_2', 'L_C_2', 'I_C_2', ...
+    'I_R_E_1', 'I_R_E_2', 'T_R_E_1', 'T_R_E_2', 'X_R_E_1', 'X_R_E_2', ...
+    'In_B_R', 'In_B_L', 'In_T_L', 'In_T_R', 'Out_B_R', 'Out_B_L', 'Out_T_L', 'Out_T_L'};
+
+% put all images into a 2 by 11 grid
+whichblock = 'ICwcfg1_presentations';
+ICwcfg1allimgs = zeros(1200*2, 1200*11);
+imkeys = nwb.stimulus_templates.get(whichblock).image.keys;
+for ii = 1:numel(imkeys)
+    r = ceil(ii/11); c=mod(ii-1,11)+1;
+    tempimkey = [whichblock num2str(ii-1)];
+    tempim = nwb.stimulus_templates.get(whichblock).image.get(tempimkey).data.load();
+    if size(tempim,1)==3
+        tempim = permute(tempim, [3 2 1]);
+    else
+        tempim = permute(tempim, [2 1]);
+    end
+    tempim = tempim(:, size(tempim,2)/2-600+1:size(tempim,2)/2+600);
+    ICwcfg1allimgs(1200*(r-1)+1:1200*r, 1200*(c-1)+1:1200*c) = tempim;
+end
+ICwcfg1allimgs(1200+[-2:3],:)=1;
+for c = 1:11-1
+ICwcfg1allimgs(:,1200*c+[-2:3])=1;
+end
+
+% figure; 
+% imshow(ICwcfg1allimgs)
+% hold on
+% plot(30+[0 visdeg16], 1200-60+[0 0], 'c-', 'LineWidth', 2)
+% text(30+visdeg16/2, 1200-60, '16°', 'Color', 'c', 'FontSize', 14, 'FontWeight', 'bold', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom')
+% for ii = 1:numel(ICtrialtypedescription)
+%     r = ceil(ii/11); c=mod(ii-1,11)+1;
+% text(30+(c-1)*1200,30+(r-1)*1200, sprintf('(%d) %s', ii-1, ICtrialtypedescription{ii}), 'Color', 'c', 'FontSize', 14, 'FontWeight', 'bold', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top')
+% end
+
+% put all images into a 3 by 8 grid
+rlist = [1*ones(1,8) 2*ones(1,6) 3*ones(1,8)];
+clist = [1:8 1:6 1:8];
+ICwcfg1_allimgs = zeros(1200*3, 1200*8);
+imkeys = nwb.stimulus_templates.get(whichblock).image.keys;
+for ii = 1:numel(imkeys)
+    r = rlist(ii); c = clist(ii);
+    tempimkey = [whichblock num2str(ii-1)];
+    tempim = nwb.stimulus_templates.get(whichblock).image.get(tempimkey).data.load();
+    if size(tempim,1)==3
+        tempim = permute(tempim, [3 2 1]);
+    else
+        tempim = permute(tempim, [2 1]);
+    end
+    tempim = tempim(:, size(tempim,2)/2-600+1:size(tempim,2)/2+600);
+    ICwcfg1_allimgs(1200*(r-1)+1:1200*r, 1200*(c-1)+1:1200*c) = tempim;
+end
+for r = 1:3
+    if r<3
+        ICwcfg1_allimgs(1200*r+[-4:5],:)=1;
+    end
+    for c = clist(rlist==r)
+        ICwcfg1_allimgs(1200*(r-1)+1:1200*r, 1200*c+[-4:5])=1;
+    end
+end
+
+fs=20;
+figure; 
+imshow(ICwcfg1_allimgs)
+hold on
+plot(30+[0 visdeg16], 1200-45+[0 0], 'c-', 'LineWidth', 2)
+text(30+visdeg16/2, 1200-45, '16°', 'Color', 'c', 'FontSize', fs, 'FontWeight', 'bold', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom')
+for ii = 1:numel(ICtrialtypedescription)
+    r = rlist(ii); c = clist(ii);
+text(30+(c-1)*1200,0+(r-1)*1200, sprintf('(%d) %s', ii-1, ICtrialtypedescription{ii}), 'Color', 'c', 'FontName', 'Arial Bold', 'FontSize', fs, 'FontWeight', 'bold', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top')
 end
