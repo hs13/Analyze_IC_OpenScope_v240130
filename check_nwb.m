@@ -11,13 +11,14 @@ nwbspikefile = "G:\My Drive\RESEARCH\IllusionOpenScope\sub-619296_ses-1187930705
 nwb = nwbRead(nwbspikefile); 
 
 %% check opto
-optopsth_v230821 = load('S:\OpenScopeData\00248_v230821\postprocessed\sub-625554\psth_opto_probeC.mat');
-optostim_v230821 = optopsth_v230821.opto.actualcond(optopsth_v230821.opto.optotrials)';
+% optopsth_v230821 = load('S:\OpenScopeData\00248_v230821\postprocessed\sub-625554\psth_opto_probeC.mat');
+% optostim_v230821 = optopsth_v230821.opto.actualcond(optopsth_v230821.opto.optotrials)';
 
 optocond = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').vectordata.get('condition').data.load();
 optostim = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').vectordata.get('stimulus_name').data.load();
 optodur = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').vectordata.get('duration').data.load();
 optolevel = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').vectordata.get('level').data.load();
+
 
 % "A Single
 % unique(optocond)
@@ -39,6 +40,25 @@ temp = [optostim, optostim_v230821];
 sprintf('')
 tmp = sortrows(temp,1);
 unique(tmp, 'rows')
+
+optotsind = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').timeseries_index.data.load();
+
+% opto block duration
+optostarttime = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').start_time.data.load();
+optostoptime = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').stop_time.data.load();
+fprintf('Opto blocks lasted %.2fmin\n', (optostoptime(end)-optostarttime(1))/60)
+
+% opto trial repeats
+uniqconds = unique(optocond);
+for icond = 1:numel(uniqconds)
+    disp(nnz(strcmp(optocond, uniqconds{icond})))
+end
+
+% 
+optoitis = diff(optostarttime);
+disp([min(optoitis) mean(optoitis) max(optoitis)])
+
+% Opto blocks lasted 26.82min (12 conditions, 50 repeats each, opto stimulation 1s, followed by ~1.7s ITI)
 
 %% check vis
 % changes in visblock keys 
@@ -256,6 +276,40 @@ title(ICtrialtypes(ii))
 end
 end
 
+%%
+% {'ICkcfg0_presentations'    }
+% {'ICkcfg1_presentations'    }
+% {'ICwcfg0_presentations'    }
+% {'ICwcfg1_presentations'    }
+% {'RFCI_presentations'       }
+% {'sizeCI_presentations'     }
+% {'spontaneous_presentations'}
+
+visblocksstart = zeros(size(visblocks));
+visblocksend = zeros(size(visblocks));
+for b = 1:numel(visblocks)-1
+    visblocksstart(b) = vis.(visblocks{b}).start_time(1);
+    visblocksend(b) = vis.(visblocks{b}).stop_time(end);
+end
+[~, visblockorder] = sort(visblocksstart);
+
+for ii = 1:numel(visblocks)
+    b = visblockorder(ii);
+    if contains(visblocks{b}, 'spontaneous')
+        continue
+    end
+    blockdursec = vis.(visblocks{b}).stop_time(end)-vis.(visblocks{b}).start_time(1) ;
+    fprintf('%s %.2fmin\n', visblocks{b}, blockdursec/60)
+    [v,c] = uniquecnt(vis.(visblocks{b}).trialorder);
+    disp([v,c])
+end
+
+% ICwcfg1_presentations 71.53min, 400 repeats 0-7 and 10-13, 50 repeats 8-9 and 14-21
+% ICwcfg0_presentations 9.21min, 30 repeats each
+% ICkcfg1_presentations 9.21min, 30 repeats each
+% ICkcfg0_presentations 9.21min, 30 repeats each
+% RFCI_presentations 3.00min, 10 repeats each
+% sizeCI_presentations 12.00min, 10 repeats each
 
 %% IC blocks figure
 ICblocksimgs = zeros(1200, 1200*8);
@@ -284,12 +338,22 @@ visdeg16 = nnz(tempcumvec==tempcumvec(round(length(tempcumvec)/2)));
 % plot(visdeg16*[-0.5 0.5]+round(size(tempim,1)/2),[0 0], 'r-', 'linewidth', 1)
 
 % images are 1920 by 1200
-ICtrialtypedescription = {'Blank', 'X', 'T_C_1', 'I_C_1', 'L_C_1', 'T_C_2', 'L_C_2', 'I_C_2', ...
+
+whichblock = 'ICkcfg1_presentations';
+
+if contains(whichblock, 'cfg1')
+    ICtrialtypedescription = {'Blank', 'X', 'T_C_1', 'I_C_1', 'L_C_1', 'T_C_2', 'L_C_2', 'I_C_2', ...
     'I_R_E_1', 'I_R_E_2', 'T_R_E_1', 'T_R_E_2', 'X_R_E_1', 'X_R_E_2', ...
     'In_B_R', 'In_B_L', 'In_T_L', 'In_T_R', 'Out_B_R', 'Out_B_L', 'Out_T_L', 'Out_T_L'};
+elseif contains(whichblock, 'cfg0')
+    ICtrialtypedescription = {'Blank', 'X', 'T_C_1', 'I_C_1', 'L_C_1', 'T_C_2', 'L_C_2', 'I_C_2', ...
+    'I_R_E_1', 'I_R_E_2', 'T_R_E_1', 'T_R_E_2', 'X_R_E_1', 'X_R_E_2', ...
+    'In_R', 'In_B', 'In_L', 'In_T', 'Out_R', 'Out_B', 'Out_L', 'Out_T'};
+else
+    error('unrecognized configuration')
+end
 
 % put all images into a 2 by 11 grid
-whichblock = 'ICwcfg1_presentations';
 ICwcfg1allimgs = zeros(1200*2, 1200*11);
 imkeys = nwb.stimulus_templates.get(whichblock).image.keys;
 for ii = 1:numel(imkeys)
@@ -322,7 +386,13 @@ end
 % put all images into a 3 by 8 grid
 rlist = [1*ones(1,8) 2*ones(1,6) 3*ones(1,8)];
 clist = [1:8 1:6 1:8];
-ICwcfg1_allimgs = zeros(1200*3, 1200*8);
+if contains(whichblock, 'ICw')
+ICblock_allimgs = zeros(1200*3, 1200*8);
+linecol = 1;
+else
+ICblock_allimgs = ones(1200*3, 1200*8);
+linecol = 0;
+end
 imkeys = nwb.stimulus_templates.get(whichblock).image.keys;
 for ii = 1:numel(imkeys)
     r = rlist(ii); c = clist(ii);
@@ -334,20 +404,25 @@ for ii = 1:numel(imkeys)
         tempim = permute(tempim, [2 1]);
     end
     tempim = tempim(:, size(tempim,2)/2-600+1:size(tempim,2)/2+600);
-    ICwcfg1_allimgs(1200*(r-1)+1:1200*r, 1200*(c-1)+1:1200*c) = tempim;
+    ICblock_allimgs(1200*(r-1)+1:1200*r, 1200*(c-1)+1:1200*c) = tempim;
 end
-for r = 1:3
-    if r<3
-        ICwcfg1_allimgs(1200*r+[-4:5],:)=1;
+for r = 0:3
+    if r==0 
+        ICblock_allimgs(1:10,:)=linecol;
+        ICblock_allimgs(:,1:10)=linecol;
+    elseif r==3
+        ICblock_allimgs(end-9:end,:)=linecol;
+    else
+        ICblock_allimgs(1200*r+[-4:5],:)=linecol;
     end
     for c = clist(rlist==r)
-        ICwcfg1_allimgs(1200*(r-1)+1:1200*r, 1200*c+[-4:5])=1;
+        ICblock_allimgs(1200*(r-1)+1:1200*r, 1200*c+[-4:5])=linecol;
     end
 end
 
 fs=20;
 figure; 
-imshow(ICwcfg1_allimgs)
+imshow(ICblock_allimgs)
 hold on
 plot(30+[0 visdeg16], 1200-45+[0 0], 'c-', 'LineWidth', 2)
 text(30+visdeg16/2, 1200-45, '16°', 'Color', 'c', 'FontSize', fs, 'FontWeight', 'bold', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom')
