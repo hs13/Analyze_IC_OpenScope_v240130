@@ -4,23 +4,18 @@
 clear all
 
 addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
-addpath('C:\Users\USER\GitHub\Analize_IC_OpenScope_v230821')
+addpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v240130')
 addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
 
-datadir = 'S:\OpenScopeData\00248_v230821\';
+datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
-nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
-    ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
-
+nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
 
 %%
 for ises = 1:numel(nwbsessions)
     clearvars -except ises nwbsessions datadir
     sesclk = tic;
-
-    % pathpp = 'D:\OpenScopeData\000248\sub-Placeholder\';
-    % nwb = nwbRead('D:\OpenScopeData\000248\sub-Placeholder\sub-Placeholder.nwb');
 
     nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));
 
