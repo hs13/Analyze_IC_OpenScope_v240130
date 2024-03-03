@@ -69,7 +69,7 @@ nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
 nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
 
-for ises = 6:numel(nwbsessions)
+for ises = 1:numel(nwbsessions)
     clearvars -except ises nwbsessions datadir
     sesclk = tic;
 
@@ -314,6 +314,7 @@ for ises = 1:numel(nwbsessions)
 
     disp(opto.genotype)
     fprintf('%.2f%% (%d/%d)\n', 100*mean(probeunits_saltp<0.01), nnz(probeunits_saltp<0.01), length(probeunits_saltp))
+    gtsplit = strsplit(opto.genotype, '-');
 
     for typi = 1:12
         subplot(12,numel(nwbsessions),(typi-1)*numel(nwbsessions)+ises)
@@ -329,7 +330,7 @@ for ises = 1:numel(nwbsessions)
         ylabel('Rate (Hz)')
         end
         if typi==1
-        title({nwbsessions{ises}, tempcond}, 'interpreter', 'none', 'FontSize', 7, 'FontWeight','normal')
+        title({[nwbsessions{ises} ' ' gtsplit{1}], tempcond}, 'interpreter', 'none', 'FontSize', 7, 'FontWeight','normal')
         else
         title(tempcond, 'interpreter', 'none', 'FontSize', 7, 'FontWeight','normal')
         end

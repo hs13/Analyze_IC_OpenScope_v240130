@@ -1,13 +1,15 @@
 addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
-addpath(genpath('C:\Users\USER\GitHub\Analize_IC_OpenScope_v230821'))
+addpath(genpath('C:\Users\USER\GitHub\Analize_IC_OpenScope_v240130'))
 addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
 
-datadir = 'S:\OpenScopeData\00248_v230821\';
+datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
-nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
-    ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
+nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
 Nsessions = numel(nwbsessions);
+
+% Skipping session1 sub-619293 -- EyeTracking error in nwb
+% Skipping session12 sub-637484 -- EyeTracking error in nwb
 
 %%
 for ises = 1:Nsessions
@@ -150,9 +152,16 @@ end
 % figure; plot(eyetracking.area, pi*eyetracking.width.*eyetracking.height, '.')
 gazerange = 160;
 
+visblocks = {'ICkcfg0_presentations','ICkcfg1_presentations','ICwcfg0_presentations','ICwcfg1_presentations', ...
+    'RFCI_presentations','sizeCI_presentations'}; %,'spontaneous_presentations'};
 trialdistmodecomagg = struct();
 trialmaxdistmodecomagg = struct();
 triallikelyblinkagg = struct();
+for b = 1:numel(visblocks)
+    trialdistmodecomagg(Nsessions).(visblocks{b}) = [];
+    trialmaxdistmodecomagg(Nsessions).(visblocks{b}) = [];
+    triallikelyblinkagg(Nsessions).(visblocks{b}) = [];
+end
 pupilwidth = NaN(1, Nsessions);
 eyewidth = NaN(1, Nsessions);
 pix8visdeg = NaN(1, Nsessions);
@@ -169,24 +178,16 @@ for ises = 1:Nsessions
     tempeyediameter = eyewidth(ises)/cosd((180-gazerange)/2);
     tempeyecircumference = pi*tempeyediameter;
     pix8visdeg(ises) = tempeyecircumference*8/180;
-    if ises==1
-        trialdistmodecomagg = trialdistmodecom;
-        trialmaxdistmodecomagg = trialmaxdistmodecom;
-        triallikelyblinkagg = triallikelyblink;
-    else
-        % trialdistmodecomagg = cat(1,trialdistmodecomagg, trialdistmodecom);
-        % trialmaxdistmodecomagg = cat(1, trialmaxdistmodecomagg, trialmaxdistmodecom);
-        % triallikelyblinkagg = cat(1, triallikelyblinkagg, triallikelyblink);
-        trialdistmodecomagg(ises) = trialdistmodecom;
-        trialmaxdistmodecomagg(ises) = trialmaxdistmodecom;
-        triallikelyblinkagg(ises) = triallikelyblink;
-    end
+
+    trialdistmodecomagg(ises) = trialdistmodecom;
+    trialmaxdistmodecomagg(ises) = trialmaxdistmodecom;
+    triallikelyblinkagg(ises) = triallikelyblink;
 end
 
 fs = 14;
 figure
 for ises = 1:Nsessions
-    subplot(3,5,ises); hold all
+    subplot(3,4,ises); hold all
     histogram(trialmaxdistmodecomagg(ises).ICwcfg1_presentations, 'Normalization', 'cdf')
     yl = ylim;
     plot(10*[1 1], yl, 'r--')
@@ -207,9 +208,8 @@ ylabel('# Sessions')
 title(sprintf('min %.1f mean %.1f median %.1f', min(pix8visdeg), nanmean(pix8visdeg), nanmedian(pix8visdeg)))
 
 %% test gazedistthresh with RFCI blocks
-% note by HS 221119
-% 3/9 sessions are valid with gazedistthresh of 10
-% 6/9 sessions are valid with gazedistthresh of 20
+% note by HS 240226
+% 9/12 sessions are valid with gazedistthresh of 20 (roughly 8 visual degrees)
 
 visagg = struct();
 for ises = 1:Nsessions
@@ -227,7 +227,7 @@ propfixedgazetrials = zeros(Nsessions,1);
 propfixcrftrials = zeros(Nsessions,1);
 figure
 for ises = 1:Nsessions
-    subplot(3,5,ises); hold all
+    subplot(3,4,ises); hold all
     histogram(trialmaxdistmodecomagg(ises).RFCI_presentations, 'binwidth', 3, 'Normalization', 'cdf')
     yl = ylim;
     plot(gazedistthresh*[1 1], yl, 'r--')
@@ -237,18 +237,25 @@ for ises = 1:Nsessions
     xlabel('camera pixels')
     ylabel('RFCI trial CDF')
     
+    if ~isempty(trialmaxdistmodecomagg(ises).RFCI_presentations)
     temptrialorder = visagg(ises).RFCI_presentations.trialorder(1:4:end);
     tempgazedist = trialmaxdistmodecomagg(ises).RFCI_presentations(1:4:end);
     templikelyblink = triallikelyblinkagg(ises).RFCI_presentations(1:4:end);
     temptrialsfixedgaze = tempgazedist<gazedistthresh & ~templikelyblink;
     propfixedgazetrials(ises) = mean(temptrialsfixedgaze);
     propfixcrftrials(ises) = mean(temptrialsfixedgaze(floor(temptrialorder/10000) == 0));
-    
+
     validRFCIfix = true;
     fixcrftrials = temptrialsfixedgaze & floor(temptrialorder/10000) == 0;% &
     if ~isequal( unique(floor(mod(temptrialorder(fixcrftrials), 1000) / 10)), (0:8)' )
         validRFCIfix = false;
     end
+    else
+        validRFCIfix = false;
+    temptrialorder = visagg(ises).RFCI_presentations.trialorder(1:4:end);
+    temptrialsfixedgaze = false(size(temptrialorder));
+    end
+
     if validRFCIfix
         titcol = [0 0 1];
     else
@@ -280,7 +287,7 @@ for ises = 1:Nsessions
     end
     visblocks = {'ICkcfg0_presentations','ICkcfg1_presentations','ICwcfg0_presentations','ICwcfg1_presentations', ...
         'RFCI_presentations','sizeCI_presentations'}; %,'spontaneous_presentations'};
-    gazedistthresh = 10;
+    gazedistthresh = 20;
     
     trackeyetli = trialdistmodecom.RFCI_presentations.trackeyetli;
     trackeyetrialinds = trialdistmodecom.RFCI_presentations.psthtrialinds;
