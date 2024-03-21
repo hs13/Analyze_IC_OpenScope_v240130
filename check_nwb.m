@@ -1,6 +1,6 @@
 % requested by Ahad: Could you look at sub-630506_ses-1192952692_ogen.nwb just to confirm everything looks correct?
 addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
-addpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v230821')
+addpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v240130')
 addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
 
 
@@ -339,7 +339,7 @@ visdeg16 = nnz(tempcumvec==tempcumvec(round(length(tempcumvec)/2)));
 
 % images are 1920 by 1200
 
-whichblock = 'ICkcfg1_presentations';
+whichblock = 'ICwcfg1_presentations';
 
 if contains(whichblock, 'cfg1')
     ICtrialtypedescription = {'Blank', 'X', 'T_C_1', 'I_C_1', 'L_C_1', 'T_C_2', 'L_C_2', 'I_C_2', ...
@@ -430,3 +430,155 @@ for ii = 1:numel(ICtrialtypedescription)
     r = rlist(ii); c = clist(ii);
 text(30+(c-1)*1200,0+(r-1)*1200, sprintf('(%d) %s', ii-1, ICtrialtypedescription{ii}), 'Color', 'c', 'FontName', 'Arial Bold', 'FontSize', fs, 'FontWeight', 'bold', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top')
 end
+
+% put IC/LC/RE/segment images into a 4 by 6 grid
+rlist = [1*ones(1,5) 2*ones(1,6) 3*ones(1,4) 4*ones(1,4)];
+clist = [1:5 1:6 1:4 1:4];
+if contains(whichblock, 'ICw')
+% ICblock_allimgs = zeros(1200*4, 1200*6);
+linecol = 1;
+else
+% ICblock_allimgs = ones(1200*4, 1200*6);
+linecol = 0;
+end
+ICblock_allimgs = ones(1200*4, 1200*6);
+imkeys = nwb.stimulus_templates.get(whichblock).image.keys;
+imorder = [1 4 5 7 8 9:22];
+for ii = 1:numel(imorder)
+    r = rlist(ii); c = clist(ii);
+    tempimkey = [whichblock num2str(imorder(ii)-1)];
+    tempim = nwb.stimulus_templates.get(whichblock).image.get(tempimkey).data.load();
+    if size(tempim,1)==3
+        tempim = permute(tempim, [3 2 1]);
+    else
+        tempim = permute(tempim, [2 1]);
+    end
+    tempim = tempim(:, size(tempim,2)/2-600+1:size(tempim,2)/2+600);
+    ICblock_allimgs(1200*(r-1)+1:1200*r, 1200*(c-1)+1:1200*c) = tempim;
+end
+for r = 0:4
+    if r==0 
+        ICblock_allimgs(1:10,:)=linecol;
+        ICblock_allimgs(:,1:10)=linecol;
+    elseif r==4
+        ICblock_allimgs(end-9:end,:)=linecol;
+        ICblock_allimgs(:,end-9:end)=linecol;
+    else
+        ICblock_allimgs(1200*r+[-4:5],:)=linecol;
+    end
+    for c = clist(rlist==r)
+        ICblock_allimgs(1200*(r-1)+1:1200*r, 1200*c+[-4:5])=linecol;
+    end
+end
+
+fs=20;
+figure; 
+imshow(ICblock_allimgs)
+hold on
+plot(30+[0 visdeg16], 1200-45+[0 0], 'c-', 'LineWidth', 2)
+text(30+visdeg16/2, 1200-45, '16°', 'Color', 'c', 'FontSize', fs, 'FontWeight', 'bold', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom')
+for ii = 1:numel(imorder)
+    r = rlist(ii); c = clist(ii);
+text(30+(c-1)*1200,0+(r-1)*1200, sprintf('%s', ICtrialtypedescription{imorder(ii)}), 'Color', 'c', 'FontName', 'Arial Bold', 'FontSize', fs, 'FontWeight', 'bold', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top')
+end
+box off
+
+
+% put IC/LC/RE images into a 1 by 11 grid
+rlist = [1*ones(1,11)];
+clist = [1:11];
+if contains(whichblock, 'ICw')
+linecol = 1;
+else
+linecol = 0;
+end
+ICblock_allimgs = ones(1200*1, 1200*11);
+imkeys = nwb.stimulus_templates.get(whichblock).image.keys;
+imorder = [1 4 5 7 8 9:14];
+for ii = 1:numel(imorder)
+    r = rlist(ii); c = clist(ii);
+    tempimkey = [whichblock num2str(imorder(ii)-1)];
+    tempim = nwb.stimulus_templates.get(whichblock).image.get(tempimkey).data.load();
+    if size(tempim,1)==3
+        tempim = permute(tempim, [3 2 1]);
+    else
+        tempim = permute(tempim, [2 1]);
+    end
+    tempim = tempim(:, size(tempim,2)/2-600+1:size(tempim,2)/2+600);
+    ICblock_allimgs(1200*(r-1)+1:1200*r, 1200*(c-1)+1:1200*c) = tempim;
+end
+for r = 0:1
+    if r==0 
+        ICblock_allimgs(1:10,:)=linecol;
+        ICblock_allimgs(:,1:10)=linecol;
+    elseif r==1
+        ICblock_allimgs(end-9:end,:)=linecol;
+        ICblock_allimgs(:,end-9:end)=linecol;
+    end
+    for c = clist(rlist==r)
+        ICblock_allimgs(1200*(r-1)+1:1200*r, 1200*c+[-4:5])=linecol;
+    end
+end
+
+fs=16;
+figure; 
+imshow(ICblock_allimgs)
+hold on
+plot(30+[0 visdeg16], 1200-45+[0 0], 'c-', 'LineWidth', 2)
+text(30+visdeg16/2, 1200-45, '16°', 'Color', 'c', 'FontSize', fs, 'FontWeight', 'bold', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom')
+for ii = 1:numel(imorder)
+    r = rlist(ii); c = clist(ii);
+text(30+(c-1)*1200,0+(r-1)*1200, sprintf('%s', ICtrialtypedescription{imorder(ii)}), 'Color', 'c', 'FontName', 'Arial Bold', 'FontSize', fs, 'FontWeight', 'bold', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top')
+end
+box off
+
+
+% put segment images into a 3 by 11 grid
+rlist = [1*ones(1,11) 2*ones(1,4) 3*ones(1,4)];
+clist = [1:11 1:4 1:4];
+if contains(whichblock, 'ICw')
+linecol = 1;
+else
+linecol = 0;
+end
+ICblock_allimgs = ones(1200*3, 1200*11);
+imkeys = nwb.stimulus_templates.get(whichblock).image.keys;
+imorder = [1 4 5 7 8 9:22];
+for ii = 1:numel(imorder)
+    r = rlist(ii); c = clist(ii);
+    tempimkey = [whichblock num2str(imorder(ii)-1)];
+    tempim = nwb.stimulus_templates.get(whichblock).image.get(tempimkey).data.load();
+    if size(tempim,1)==3
+        tempim = permute(tempim, [3 2 1]);
+    else
+        tempim = permute(tempim, [2 1]);
+    end
+    tempim = tempim(:, size(tempim,2)/2-600+1:size(tempim,2)/2+600);
+    ICblock_allimgs(1200*(r-1)+1:1200*r, 1200*(c-1)+1:1200*c) = tempim;
+end
+for r = 0:3
+    if r==0 
+        ICblock_allimgs(1:10,:)=linecol;
+        ICblock_allimgs(:,1:10)=linecol;
+    elseif r==3
+        ICblock_allimgs(end-9:end,:)=linecol;
+        ICblock_allimgs(:,end-9:end)=linecol;
+    else
+        ICblock_allimgs(1200*r+[-4:5],:)=linecol;
+    end
+    for c = clist(rlist==r)
+        ICblock_allimgs(1200*(r-1)+1:1200*r, 1200*c+[-4:5])=linecol;
+    end
+end
+
+fs=16;
+figure
+imshow(ICblock_allimgs)
+hold on
+plot(30+[0 visdeg16], 1200-45+[0 0], 'c-', 'LineWidth', 2)
+text(30+visdeg16/2, 1200-45, '16°', 'Color', 'c', 'FontSize', fs, 'FontWeight', 'bold', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom')
+for ii = 1:numel(imorder)
+    r = rlist(ii); c = clist(ii);
+text(30+(c-1)*1200,0+(r-1)*1200, sprintf('%s', ICtrialtypedescription{imorder(ii)}), 'Color', 'c', 'FontName', 'Arial Bold', 'FontSize', fs, 'FontWeight', 'bold', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top')
+end
+box off

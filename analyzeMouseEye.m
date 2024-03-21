@@ -16,13 +16,13 @@ for ises = 1:Nsessions
     clearvars -except ises Nsessions nwbsessions datadir
     sesclk = tic;
     
-    pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
-    load([pathpp 'postprocessed_probeC.mat'], 'vis')
     visblocks = {'ICkcfg0_presentations','ICkcfg1_presentations','ICwcfg0_presentations','ICwcfg1_presentations', ...
         'RFCI_presentations','sizeCI_presentations'}; %,'spontaneous_presentations'};
+
+    pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
+    load([pathpp 'postprocessed_probeC.mat'], 'vis')
     
-    nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));
-    
+    nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));    
     % take filename with shortest length or filename that does not contain probe
     [~, fileind] = min(cellfun(@length, {nwbfiles.name}));
     nwbspikefile = fullfile([nwbfiles(fileind).folder filesep nwbfiles(fileind).name]);
