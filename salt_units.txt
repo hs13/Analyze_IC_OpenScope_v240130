@@ -1,0 +1,219 @@
+conditions = {
+            "0": {
+                "duration": .01,
+                "name": "1Hz_10ms",
+                "condition": "10 ms pulse at 1 Hz"
+            },
+            "1": {
+                "duration": .002,
+                "name": "1Hz_2ms",
+                "condition": "2 ms pulse at 1 Hz"
+            },
+            "2": {
+                "duration": 1.0,
+                "name": "5Hz_2ms",
+                "condition": "2 ms pulses at 5 Hz"
+            },
+            "3": {
+                "duration": 1.0,
+                "name": "10Hz_2ms",
+                "condition": "2 ms pulses at 10 Hz'"
+            },
+            "4": {
+                "duration": 1.0,
+                "name": "20Hz_2ms",
+                "condition": "2 ms pulses at 20 Hz"
+            },
+            "5": {
+                "duration": 1.0,
+                "name": "30Hz_2ms",
+                "condition": "2 ms pulses at 30 Hz"
+            },
+            "6": {
+                "duration": 1.0,
+                "name": "40Hz_2ms",
+                "condition": "2 ms pulses at 40 Hz"
+            },
+            "7": {
+                "duration": 1.0,
+                "name": "50Hz_2ms",
+                "condition": "2 ms pulses at 50 Hz"
+            },
+            "8": {
+                "duration": 1.0,
+                "name": "60Hz_2ms",
+                "condition": "2 ms pulses at 60 Hz"
+            },
+            "9": {
+                "duration": 1.0,
+                "name": "80Hz_2ms",
+                "condition": "2 ms pulses at 80 Hz"
+            },
+            "10": {
+                "duration": 1.0,
+                "name": "square_1s",
+                "condition": "1 second square pulse: continuously on for 1s"
+            },
+            "11": {
+                "duration": 1.0,
+                "name": "cosine_1s",
+                "condition": "cosine pulse"
+            },
+        }
+
+sub-619293 Sst-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 2136
+Probe A: 300
+0.00% (0/300)
+Probe B: 342
+0.29% (1/342)
+Probe C: 271
+0.00% (0/271)
+Probe D: 395
+7.34% (29/395)
+Probe E: 387
+8.53% (33/387)
+Probe F: 441
+8.39% (37/441)
+sub-619296 Sst-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 1918
+Probe A: 157
+0.64% (1/157)
+Probe B: 367
+0.00% (0/367)
+Probe C: 338
+0.30% (1/338)
+Probe D: 292
+0.00% (0/292)
+Probe E: 429
+0.47% (2/429)
+Probe F: 335
+0.30% (1/335)
+sub-620333 Sst-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 2593
+Probe A: 408
+6.86% (28/408)
+Probe B: 451
+7.32% (33/451)
+Probe C: 257
+12.45% (32/257)
+Probe D: 458
+3.93% (18/458)
+Probe E: 511
+5.68% (29/511)
+Probe F: 508
+3.54% (18/508)
+sub-620334 Sst-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 2092
+Probe A: 307
+38.11% (117/307)
+Probe B: 388
+25.26% (98/388)
+Probe C: 229
+61.14% (140/229)
+Probe D: 418
+27.75% (116/418)
+Probe E: 404
+30.69% (124/404)
+Probe F: 346
+33.53% (116/346)
+sub-625545 Sst-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 2793
+Probe A: 367
+13.35% (49/367)
+Probe B: 492
+8.94% (44/492)
+Probe C: 519
+10.79% (56/519)
+Probe D: 454
+11.89% (54/454)
+Probe E: 488
+11.68% (57/488)
+Probe F: 473
+8.67% (41/473)
+sub-625554 Pvalb-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 2930
+Probe A: 532
+10.34% (55/532)
+Probe B: 379
+14.51% (55/379)
+Probe C: 447
+10.07% (45/447)
+Probe D: 474
+10.55% (50/474)
+Probe E: 614
+8.96% (55/614)
+Probe F: 484
+11.98% (58/484)
+sub-625555 Pvalb-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 2621
+Probe A: 435
+23.45% (102/435)
+Probe B: 469
+17.48% (82/469)
+Probe C: 501
+29.14% (146/501)
+Probe D: 326
+38.34% (125/326)
+Probe E: 449
+22.94% (103/449)
+Probe F: 441
+23.13% (102/441)
+sub-630506 Sst-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 2517
+Probe A: 489
+5.73% (28/489)
+Probe B: 518
+11.39% (59/518)
+Probe C: 227
+49.34% (112/227)
+Probe D: 404
+10.64% (43/404)
+Probe E: 445
+9.44% (42/445)
+Probe F: 434
+13.82% (60/434)
+sub-631510 Sst-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 2386
+Probe A: 384
+39.58% (152/384)
+Probe B: 427
+28.81% (123/427)
+Probe C: 340
+51.18% (174/340)
+Probe D: 381
+32.28% (123/381)
+Probe E: 467
+35.12% (164/467)
+Probe F: 387
+34.88% (135/387)
+sub-631570 Pvalb-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 1789
+Probe A: 434
+8.06% (35/434)
+Probe B: 63
+73.02% (46/63)
+Probe C: 369
+16.26% (60/369)
+Probe D: 423
+5.44% (23/423)
+Probe E: 223
+10.31% (23/223)
+Probe F: 277
+11.19% (31/277)
+sub-633229 Sst-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 3026
+Probe A: 522
+8.24% (43/522)
+Probe B: 507
+15.19% (77/507)
+Probe C: 539
+24.68% (133/539)
+Probe D: 336
+42.86% (144/336)
+Probe E: 588
+5.95% (35/588)
+Probe F: 534
+10.67% (57/534)
+sub-637484 Sst-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt 2373
+Probe A: 316
+26.58% (84/316)
+Probe B: 444
+13.06% (58/444)
+Probe C: 486
+30.04% (146/486)
+Probe D: 433
+19.86% (86/433)
+Probe E: 305
+22.95% (70/305)
+Probe F: 389
+30.33% (118/389)

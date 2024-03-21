@@ -1,14 +1,14 @@
 addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
-addpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v230821')
+addpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v240130')
 
-datadir = 'S:\OpenScopeData\00248_v230821\';
+datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name}; 
 nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
     ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
 Nsessions = numel(nwbsessions);
 
-gazedistthresh = 10;
+gazedistthresh = 20;
 
 % A-AM, B-PM, C-V1, D-LM, E-AL, F-RL
 probes = {'A', 'B', 'C', 'D', 'E', 'F'};
@@ -55,7 +55,7 @@ toc
 % Sst-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt
 
 %% aggregate visresponses: ICsig, RFCI, RFCIspin, sizeCI, oriparams
-ises=1;
+ises=2;
 pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
 load(sprintf('%svisresponses_fixedgaze%dpix_probeC.mat', pathpp, gazedistthresh))
 load(sprintf('%spostprocessed_probeC.mat', pathpp), 'neuoind')
@@ -160,12 +160,13 @@ sizeCI_fixedgazeagg = cell(numel(probes), Nsessions);
 oriparams_fixedgazeagg = cell(numel(probes), Nsessions);
 ori4params_fixedgazeagg = cell(numel(probes), Nsessions);
 
-
+validfixedgazesessions = true(1,Nsessions);
 for ises = 1:Nsessions
     fprintf('Session %d/%d %s\n', ises, Nsessions, nwbsessions{ises} )
     pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
     if ~exist([pathpp 'trackmouseeye.mat'], 'file')
         fprintf('Skipping session%d %s -- EyeTracking error in nwb\n', ises, nwbsessions{ises})
+        validfixedgazesessions(ises) = false;
         continue
     end
     load([pathpp 'info_electrodes.mat']) %'electrode_probeid', 'electrode_localid', 'electrode_id', 'electrode_location', '-v7.3')
@@ -369,8 +370,10 @@ clearvars temp
 
 %% sanity check: neuoind is ordered according to the probe order
 for ises = 1:Nsessions
+    if validfixedgazesessions(ises)
     if ~isequal( cat(1,neuoindagg{:,ises}), (1:length(cat(1,neuoindagg{:,ises})))' )
         error('neuoind is not ordered according to probe indices')
+    end
     end
 end
 
@@ -379,8 +382,8 @@ if ~isequal(floor(neupeakchall/1000), probeneuall-1)
 end
 
 %%
-save(['S:\OpenScopeData\00248_v230821\postprocessed\openscope_popavg_fixedgazeall_', num2str(gazedistthresh), 'pix.mat'], ...
-    'gazedistthresh', 'probes', 'visblocks', 'ICblocks', ...
+save([datadir 'postprocessed\openscope_popavg_fixedgazeall_', num2str(gazedistthresh), 'pix.mat'], ...
+    'gazedistthresh', 'validfixedgazesessions', 'probes', 'visblocks', 'ICblocks', ...
     'nwbsessions', 'neuoindall', 'probeneuall', 'neulocall', 'neupeakchall', 'sesneuall', 'neuctxall', ...
     'meanFRvecall', 'sponFRvecall', 'vis', ...
     'unit_amplitude_all', 'unit_isi_violations_all', 'unit_wfdur_all', 'unit_amplitude_cutoff_all', 'unit_presence_ratio_all', ...
@@ -593,8 +596,8 @@ for b = 1:numel(visblocks)
 end
 
 if aggpsth
-    save(['S:\OpenScopeData\00248_v230821\postprocessed\openscope_psthavg_fixedgazeall_', num2str(gazedistthresh), 'pix.mat'], ...
-        'probes', 'visareas', 'visind', 'nwbsessions', ...
+    save([datadir 'postprocessed\openscope_psthavg_fixedgazeall_', num2str(gazedistthresh), 'pix.mat'], ...
+        'validfixedgazesessions', 'probes', 'visareas', 'visind', 'nwbsessions', ...
         'neuoindall', 'probeneuall', 'neulocall', 'neupeakchall', 'sesneuall', 'neuctxall', ...
         'unit_amplitude_all', 'unit_isi_violations_all', 'unit_wfdur_all', 'unit_amplitude_cutoff_all', 'unit_presence_ratio_all', ...
         'vistrialtypes_fixedgazeagg', 'vistrialrep_fixedgazeagg', 'vistrialorder_fixedgazeagg', 'vistrial_fixedgazeagg', ...
@@ -603,7 +606,7 @@ if aggpsth
 end
 
 %% MATCH BETWEEN CRF POSITION FOR ALL TRIALS VS FIXED GAZE TRIALS: ~63% neurons show match
-load('S:\OpenScopeData\00248_v230821\postprocessed\openscope_popavg_all.mat', 'RFCIall')
+load([datadir 'postprocessed\openscope_popavg_all.mat'], 'RFCIall')
 
 neuinarea = strcmp(neulocall, 'VISp2/3'); % 86% neurons show match
 RFindclassic = RFCIall.RFindclassic;

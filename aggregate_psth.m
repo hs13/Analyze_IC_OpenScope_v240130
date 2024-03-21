@@ -1,8 +1,8 @@
 % IMPORTANT VERSION UPDATE ON 231010 : aggregate to match the original order
 addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
-addpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v230821')
+addpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v240130')
 
-datadir = 'S:\OpenScopeData\00248_v230821\';
+datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
 nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
@@ -334,7 +334,7 @@ if ~isequal(floor(neupeakchall/1000), probeneuall-1)
 end
 
 %%
-save(['S:\OpenScopeData\00248_v230821\postprocessed\openscope_popavg_all.mat'], ...
+save([datadir 'postprocessed\openscope_popavg_all.mat'], ...
     'nwbsessions', 'neuoindall', 'probeneuall', 'neulocall', 'neupeakchall', 'sesneuall', 'neuctxall', ...
     'meanFRvecall', 'sponFRvecall', 'vis', ...
     'unit_amplitude_all', 'unit_isi_violations_all', 'unit_wfdur_all', 'unit_amplitude_cutoff_all', 'unit_presence_ratio_all', ...
@@ -350,7 +350,7 @@ else
     probesR = probes;
 end
 
-load('S:\OpenScopeData\00248_v230821\postprocessed\sub-619296\postprocessed_probeC.mat', 'psthtli', 'vis')
+load([datadir 'postprocessed\sub-619296\postprocessed_probeC.mat'], 'psthtli', 'vis')
 Nneuronsall = numel(sesneuall);
 
 visblocks = {'ICkcfg0_presentations','ICkcfg1_presentations','ICwcfg0_presentations','ICwcfg1_presentations', ...
@@ -361,7 +361,7 @@ vistrialrepagg = struct();
 vistrialorderagg = struct();
 if aggpsth
     psthavgall = struct();
-    psthsemall = struct();
+    % psthsemall = struct();
 end
 Ronavgall = struct();
 Roffavgall = struct();
@@ -376,7 +376,7 @@ for b = 1:numel(visblocks)
     for iprobe = 1:numel(probesR)
         if aggpsth
             psthavgall.(visblocks{b}) = NaN(length(psthtli), Ntt, Nneuronsall);
-            psthsemall.(visblocks{b}) = NaN(length(psthtli), Ntt, Nneuronsall);
+            % psthsemall.(visblocks{b}) = NaN(length(psthtli), Ntt, Nneuronsall);
         end
         Ronavgall.(visblocks{b}) = NaN(Nneuronsall,Ntt);
         Roffavgall.(visblocks{b}) = NaN(Nneuronsall,Ntt);
@@ -485,7 +485,7 @@ for ises = 1:Nsessions
             end
             if aggpsth
                 psthavgall.(visblocks{b})(:,:,tempneusesprobe) = temppsth;
-                psthsemall.(visblocks{b})(:,:,tempneusesprobe) = temppsthsem;
+                % psthsemall.(visblocks{b})(:,:,tempneusesprobe) = temppsthsem;
             end
             Ronavgall.(visblocks{b})(tempneusesprobe,:) = tempRonavg ;
             Roffavgall.(visblocks{b})(tempneusesprobe,:) = tempRoffavg ;
@@ -502,19 +502,19 @@ end
 for b = 1:numel(visblocks)
     tic
     n1 = nnz(isnan(psthavgall.(visblocks{b})));
-    n2 = nnz(isnan(psthsemall.(visblocks{b})));
+    % n2 = nnz(isnan(psthsemall.(visblocks{b})));
     n3 = nnz(isnan(Ronavgall.(visblocks{b})));
     n4 = nnz(isnan(Roffavgall.(visblocks{b})));
     n5 = nnz(isnan(Ronstdall.(visblocks{b})));
     n6 = nnz(isnan(Roffstdall.(visblocks{b})));
     if strcmp(visblocks{b}, 'RFCI_presentations')
-        if ~all([n1 n2 n3 n5]==0)
-            disp([n1 n2 n3 n5])
+        if ~all([n1 n3 n5]==0)
+            disp([n1 n3 n5])
             error('%s NaN value found -- check', visblocks{b})
         end
     else
-        if ~all([n1 n2 n3 n4 n5 n6]==0)
-            disp([n1 n2 n3 n4 n5 n6])
+        if ~all([n1 n3 n4 n5 n6]==0)
+            disp([n1 n3 n4 n5 n6])
             error('%s NaN value found -- check', visblocks{b})
         end
     end
@@ -522,16 +522,16 @@ for b = 1:numel(visblocks)
 end
 
 if aggpsth
-    save('S:\OpenScopeData\00248_v230821\postprocessed\openscope_psthavgall.mat', ...
+    save([datadir 'postprocessed\openscope_psthavgall.mat'], ...
         'probes', 'visareas', 'visind', 'nwbsessions', ...
         'neuoindall', 'probeneuall', 'neulocall', 'neupeakchall', 'sesneuall', 'neuctxall', ...
         'unit_amplitude_all', 'unit_isi_violations_all', 'unit_wfdur_all', 'unit_amplitude_cutoff_all', 'unit_presence_ratio_all', ...
         'vistrialtypesagg', 'vistrialrepagg', 'vistrialorderagg', ...
         'ICblocks', 'ICtrialtypes', 'psthtli', 'psthavgall', 'Ronavgall', 'Roffavgall', ...
-        'psthsemall', 'Ronstdall', 'Roffstdall', '-v7.3')
+        'Ronstdall', 'Roffstdall', '-v7.3') %'psthsemall', 
 end
 
-
+%{
 %% report number of units in each area/session/probe
 aggneuloc = cat(1,neulocagg{:});
 aggsesneu = cat(1,sesneuagg{:});
@@ -551,4 +551,4 @@ end
 
 areaunitstab = table(v,c,areaunitsperses);
 open areaunitstab
-
+%}

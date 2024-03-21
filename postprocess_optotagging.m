@@ -1,76 +1,73 @@
-%{
-conditions = {
-    "0": {
-        "duration": 1,
-        "name": "fast_pulses",
-        "condition": "2 ms pulses at 1 Hz"
-    },
-    "1": {
-        "duration": 1,
-        "name": "pulse",
-        "condition": "a single 10ms pulse"
-    },
-    "2": {
-        "duration": .2,
-        "name": "pulse",
-        "condition": "1 second of 5Hz pulse train. Each pulse is 2 ms wide"
-    },
-    "3": {
-        "duration": .1,
-        "name": "raised_cosine",
-        "condition": "half-period of a cosine wave"
-    },
-    "4": {
-        "duration": .05,
-        "name": "5 hz pulse train",
-        "condition": "Each pulse is 10 ms wide"
-    },
-    "5": {
-        "duration": .033,
-        "name": "40 hz pulse train",
-        "condition": "Each pulse is 6 ms wide"
-    },
-    "6": {
-        "duration": .025,
-        "name": "fast_pulses",
-        "condition": "1 second of 40 Hz pulse train. Each pulse is 2 ms wide"
-    },
-    "7": {
-        "duration": 0.02,
-        "name": "pulse",
-        "condition": "a single square pulse"
-    },
-    "8": {
-        "duration": 0.0167,
-        "name": "pulse",
-        "condition": "a single square pulse"
-    },
-    "9": {
-        "duration": .0125,
-        "name": "raised_cosine",
-        "condition": "half-period of a cosine wave"
-    },
-    "10": {
-        "duration": .01,
-        "name": "100 hz pulse train",
-        "condition": "1 second of 100 Hz pulse train. Each pulse is 2 ms wide"
-    },
-    "11": {
-        "duration": 1.0,
-        "name": "Square Pulse",
-        "condition": "1 second square pulse: continuously on for 1s"
-    }
-%}
-
+% conditions = {
+%             "0": {
+%                 "duration": .01,
+%                 "name": "1Hz_10ms",
+%                 "condition": "10 ms pulse at 1 Hz"
+%             },
+%             "1": {
+%                 "duration": .002,
+%                 "name": "1Hz_2ms",
+%                 "condition": "2 ms pulse at 1 Hz"
+%             },
+%             "2": {
+%                 "duration": 1.0,
+%                 "name": "5Hz_2ms",
+%                 "condition": "2 ms pulses at 5 Hz"
+%             },
+%             "3": {
+%                 "duration": 1.0,
+%                 "name": "10Hz_2ms",
+%                 "condition": "2 ms pulses at 10 Hz'"
+%             },
+%             "4": {
+%                 "duration": 1.0,
+%                 "name": "20Hz_2ms",
+%                 "condition": "2 ms pulses at 20 Hz"
+%             },
+%             "5": {
+%                 "duration": 1.0,
+%                 "name": "30Hz_2ms",
+%                 "condition": "2 ms pulses at 30 Hz"
+%             },
+%             "6": {
+%                 "duration": 1.0,
+%                 "name": "40Hz_2ms",
+%                 "condition": "2 ms pulses at 40 Hz"
+%             },
+%             "7": {
+%                 "duration": 1.0,
+%                 "name": "50Hz_2ms",
+%                 "condition": "2 ms pulses at 50 Hz"
+%             },
+%             "8": {
+%                 "duration": 1.0,
+%                 "name": "60Hz_2ms",
+%                 "condition": "2 ms pulses at 60 Hz"
+%             },
+%             "9": {
+%                 "duration": 1.0,
+%                 "name": "80Hz_2ms",
+%                 "condition": "2 ms pulses at 80 Hz"
+%             },
+%             "10": {
+%                 "duration": 1.0,
+%                 "name": "square_1s",
+%                 "condition": "1 second square pulse: continuously on for 1s"
+%             },
+%             "11": {
+%                 "duration": 1.0,
+%                 "name": "cosine_1s",
+%                 "condition": "cosine pulse"
+%             },
+%         }
 
 addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
 addpath('C:\Users\USER\GitHub\helperfunctions')
-datadir = 'S:\OpenScopeData\00248_v230821\';
+datadir = 'S:\OpenScopeData\00248_v240130\';
 
 nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
-nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
-    ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
+nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
 
 for ises = 1:numel(nwbsessions)
     clearvars -except ises nwbsessions datadir
@@ -107,44 +104,36 @@ disp(unique(o))
     opto.optodur = optodur;
     opto.optolevel = optolevel;
 
-    % conditionlist= {'2 ms pulses at 1 Hz', 'a single 10ms pulse', ...
-    %     '1 second of 5Hz pulse train. Each pulse is 2 ms wide', ...
-    %     'half-period of a cosine wave', 'Each pulse is 10 ms wide', ...
-    %     'Each pulse is 6 ms wide', ...
-    %     '1 second of 40 Hz pulse train. Each pulse is 2 ms wide', ...
-    %     'a single square pulse', 'a single square pulse', ...
-    %     'half-period of a cosine wave', ...
-    %     '1 second of 100 Hz pulse train. Each pulse is 2 ms wide', ...
-    %     '1 second square pulse: continuously on for 1s'          };
-    opto.stimlist = {'fast_pulses', 'pulse', 'pulse', 'raised_cosine', ...
-        '5 hz pulse train', '40 hz pulse train', 'fast_pulses', 'pulse', ...
-        'pulse', 'raised_cosine', '100 hz pulse train', 'Square Pulse'};
-    opto.durationlist = [1; 1; 0.2; 0.1; 0.05; 0.033; 0.025; 0.02; 0.0167; .0125; 0.01; 1.0];
+    opto.stimlist = {'1Hz_10ms', '1Hz_2ms', '5Hz_2ms', '10Hz_2ms', '20Hz_2ms', ...
+        '30Hz_2ms', '40Hz_2ms', '50Hz_2ms', '60Hz_2ms', '80Hz_2ms', 'square_1s', 'cosine_1s'};
+    if ~isequal(unique(opto.optostim)', sort(opto.stimlist))
+        error('check opto.stimlist')
+    end
 
     opto.optotrials = zeros(size(opto.optocond));
     for typi = 1:length(opto.stimlist)
-        trialsoi = strcmp(opto.optostim, opto.stimlist{typi}) & round(opto.optodur*10^4)==round(opto.durationlist(typi)*10^4) ;
+        trialsoi = strcmp(opto.optostim, opto.stimlist{typi}) ;
+        % check that this trial type is truly one unique condition
+        if numel(unique(opto.optocond(trialsoi)))==1 && numel(unique(opto.optostim(trialsoi)))==1 && range(opto.optodur(trialsoi))<10^-4 && numel(unique(opto.optolevel(trialsoi)))==1
+        else
+            error('check that this trial type is truly one unique condition')
+        end
         opto.optotrials(trialsoi) = typi;
     end
     [v,c]=uniquecnt(opto.optotrials);
     %disp([v,c])
+    if nnz(opto.optotrials==0)
+        error('check uncategorized opto.optostim')
+    end
 
     opto.optostarttime = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').start_time.data.load();
     opto.optostoptime = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').stop_time.data.load();
 
-    % % below is the order according to my opto script
-    % condition_list = [0,1,2,3,4,5,6,7,8,9,10,11];
-    % waveforms = [data_1Hz_10ms, data_1Hz, data_5Hz, data_10Hz, data_20Hz, data_30Hz, data_40Hz, data_50Hz, data_60Hz, data_80Hz, data_square1s, data_cosine];
-
-    % % presumed order
-    % opto.presumedcond = {'square1s', '1Hz', '5Hz', '10Hz', '20Hz', '30Hz', '40Hz', ...
-    %     '50Hz', '60Hz', '80Hz', '100Hz', 'cosine'}; % presumably...
-
-    opto.actualcond = {'1Hz_10ms', '1Hz_2ms', '5Hz_2ms', '10Hz_2ms', '20Hz_2ms', ...
-        '30Hz_2ms', '40Hz_2ms', '50Hz_2ms', '60Hz_2ms', '80Hz_2ms', 'square1s', 'cosine'};
+    % opto.actualcond = {'1Hz_10ms', '1Hz_2ms', '5Hz_2ms', '10Hz_2ms', '20Hz_2ms', ...
+    %     '30Hz_2ms', '40Hz_2ms', '50Hz_2ms', '60Hz_2ms', '80Hz_2ms', 'square1s', 'cosine'};
 
     % optotimeseries = nwb.processing.get('optotagging').dynamictable.get('optogenetic_stimulation').timeseries.data.load();
-    %%
+    % %%
     unit_ids = nwb.units.id.data.load(); % array of unit ids represented within this session
     unit_peakch = nwb.units.vectordata.get('peak_channel_id').data.load();
     unit_times_data = nwb.units.spike_times.data.load();
@@ -175,7 +164,7 @@ disp(unique(o))
 
     fprintf('%s %s %d\n', nwbsessions{ises}, opto.genotype, Nneurons)
 
-    %%
+    % %%
     probes = {'A', 'B', 'C', 'D', 'E', 'F'};
     optopsthtli = (-500:1500)';
     neucnt = 0;
@@ -214,7 +203,7 @@ disp(unique(o))
         % toc % takes ~5sec per probe
 
 
-        salttrials = opto.optotrials~=find(strcmp(opto.actualcond, 'cosine'));
+        salttrials = opto.optotrials~=find(strcmp(opto.stimlist, 'cosine'));
         saltbasetli = [-floor(0.5/Tres):-1]';
         salttesttli = [0:floor(0.009/Tres)]';
         probeunits_saltp = NaN(size(neuoind));
@@ -309,7 +298,7 @@ caxis([0 0.1])
 end
 
 %% plot each session
-datadir = 'S:\OpenScopeData\00248_v230821\';
+datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
 nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
@@ -323,19 +312,15 @@ for ises = 1:numel(nwbsessions)
     ppfn = [pathpp 'psth_opto_probeC.mat'];
     load(ppfn)
 
-    %opto.genotype = nwb.general_subject.genotype;
-    % opto.actualcond = {'1Hz_10ms', '1Hz_2ms', '5Hz_2ms', '10Hz_2ms', '20Hz_2ms', ...
-    %     '30Hz_2ms', '40Hz_2ms', '50Hz_2ms', '60Hz_2ms', '80Hz_2ms', 'square1s', 'cosine'};
-    % opto = rmfield(opto, 'presumedcond');
-
     disp(opto.genotype)
     fprintf('%.2f%% (%d/%d)\n', 100*mean(probeunits_saltp<0.01), nnz(probeunits_saltp<0.01), length(probeunits_saltp))
+    gtsplit = strsplit(opto.genotype, '-');
 
     for typi = 1:12
         subplot(12,numel(nwbsessions),(typi-1)*numel(nwbsessions)+ises)
         smhalfwin = 0; smwin = smhalfwin*2+1;
         temppsth = convn(optopsth(:, opto.optotrials==typi, :), ones(smwin,1)/smwin, 'valid');
-        tempcond = opto.actualcond{typi};
+        tempcond = opto.stimlist{typi};
 
         plot(optopsthtli(smhalfwin+1:end-smhalfwin), 1000*squeeze(mean(temppsth, [2 3])))
         if typi==12
@@ -345,7 +330,7 @@ for ises = 1:numel(nwbsessions)
         ylabel('Rate (Hz)')
         end
         if typi==1
-        title({nwbsessions{ises}, tempcond}, 'interpreter', 'none', 'FontSize', 7, 'FontWeight','normal')
+        title({[nwbsessions{ises} ' ' gtsplit{1}], tempcond}, 'interpreter', 'none', 'FontSize', 7, 'FontWeight','normal')
         else
         title(tempcond, 'interpreter', 'none', 'FontSize', 7, 'FontWeight','normal')
         end
@@ -384,12 +369,15 @@ end
 
 
 addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
-nwbsessions = {'sub-619296','sub-620333','sub-620334','sub-625545','sub-625554','sub-625555','sub-630506','sub-630507','sub-631510','sub-631570','sub-633229','sub-637484'};
+datadir = 'S:\OpenScopeData\00248_v240130\';
+nwbdir = dir(datadir);
+nwbsessions = {nwbdir.name};
+nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
+
 for ises = 1:numel(nwbsessions)
-    clearvars -except nwbsessions ises
+    clearvars -except datadir nwbsessions ises
     mousedate = nwbsessions{ises};
-    datadir = 'S:/OpenScopeData/00248_v230821/';
-    pathpp = strcat('S:/OpenScopeData/00248_v230821/postprocessed/', mousedate, '/');
+    pathpp = strcat('S:/OpenScopeData/00248_v240130/postprocessed/', mousedate, '/');
     disp(mousedate)
 
     nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));
@@ -451,7 +439,7 @@ isi1amp5pres9 = zeros(numel(nwbsessions),1);
 isi5pres9 = zeros(numel(nwbsessions),1);
 for ises = 1:numel(nwbsessions)
     mousedate = nwbsessions{ises};
-    pathpp = strcat('S:/OpenScopeData/00248_v230821/postprocessed/', mousedate, '/');
+    pathpp = strcat('S:/OpenScopeData/00248_v240130/postprocessed/', mousedate, '/');
 
     load([pathpp 'qc_units.mat'], 'unit_wfdur', 'unit_isi_violations', 'unit_amplitude', 'unit_amplitude_cutoff', 'unit_presence_ratio') %'unit_times_data',
     isi5amp1pres9(ises) = mean(unit_isi_violations<0.5 & unit_amplitude_cutoff<0.1 & unit_presence_ratio>0.9);

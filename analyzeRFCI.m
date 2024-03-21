@@ -61,23 +61,27 @@ end
 
 
 pRrfclassic = NaN(Nneurons, Nrfs);
+pRrfclassic_onetail = NaN(Nneurons, Nrfs);
 for rfi = 1:Nrfs
     crftrials = floor(trialorder/10000) == 0 & floor(mod(trialorder, 1000) / 10) == rfi-1 ;    
     if nnz(crftrials)==0
         continue
     end
     for ci = 1:Nneurons
-        pRrfclassic(ci,rfi) = signrank(R(ci,crftrials)-sponFR(ci));
+        pRrfclassic(ci,rfi) = signrank(R(ci,crftrials),sponFR(ci));
+        pRrfclassic_onetail(ci,rfi) = signrank(R(ci,crftrials),sponFR(ci), 'tail', 'right');
     end
 end
 pRrfinverse = NaN(Nneurons, Nrfs);
+pRrfinverse_onetail = NaN(Nneurons, Nrfs);
 for rfi = 1:Nrfs
     irftrials = floor(trialorder/10000) == 1 & floor(mod(trialorder, 1000) / 10) == rfi-1 ;
     if nnz(irftrials)==0
         continue
     end
     for ci = 1:Nneurons
-        pRrfinverse(ci,rfi) = signrank(R(ci,irftrials)-sponFR(ci));
+        pRrfinverse(ci,rfi) = signrank(R(ci,irftrials),sponFR(ci));
+        pRrfinverse_onetail(ci,rfi) = signrank(R(ci,irftrials),sponFR(ci), 'tail', 'right');
     end
 end
 
@@ -94,13 +98,31 @@ RFsigexclinverse = pRFinverse*Nrfs<0.05 & pRFinverse==tempsorted(:,1) & sum(temp
 RFexclsigclassic = pRFclassic<0.05 & sum(pRrfclassic<0.05, 2)==1;
 RFexclsiginverse = pRFinverse<0.05 & sum(pRrfinverse<0.05, 2)==1;
 
+
+pRFclassic_onetail = pRrfclassic_onetail(sub2ind(size(pRrfclassic_onetail), (1:Nneurons)', RFindclassic));
+pRFinverse_onetail = pRrfinverse_onetail(sub2ind(size(pRrfinverse_onetail), (1:Nneurons)', RFindinverse));
+
+% find cells where RF is the only significant location. bonferroni-holm corrected
+tempsorted = sort(pRrfclassic_onetail, 2);
+RFsigexclclassic_onetail = pRFclassic_onetail*Nrfs<0.05 & pRFclassic_onetail==tempsorted(:,1) & sum(tempsorted .* [Nrfs:-1:1]<0.05, 2)==1;
+
+tempsorted = sort(pRrfinverse_onetail, 2);
+RFsigexclinverse_onetail = pRFinverse_onetail*Nrfs<0.05 & pRFinverse_onetail==tempsorted(:,1) & sum(tempsorted .* [Nrfs:-1:1]<0.05, 2)==1;
+
+RFexclsigclassic_onetail = pRFclassic_onetail<0.05 & sum(pRrfclassic_onetail<0.05, 2)==1;
+RFexclsiginverse_onetail = pRFinverse_onetail<0.05 & sum(pRrfinverse_onetail<0.05, 2)==1;
+
 RFCIfields = {'Rrfclassic', 'Rrfinverse', 'RFindclassic', 'RFindinverse', ...
     'Pkw_rfclassic', 'Pkw_rfinverse', 'sigmc_rfclassic', 'sigmc_rfinverse', ...
     'pRrfclassic', 'pRrfinverse', 'pRFclassic', 'pRFinverse', ...
-    'RFsigexclclassic', 'RFsigexclinverse', 'RFexclsigclassic', 'RFexclsiginverse'};
+    'RFsigexclclassic', 'RFsigexclinverse', 'RFexclsigclassic', 'RFexclsiginverse', ...
+    'pRrfclassic_onetail', 'pRrfinverse_onetail', 'pRFclassic_onetail', 'pRFinverse_onetail', ...
+    'RFsigexclclassic_onetail', 'RFsigexclinverse_onetail', 'RFexclsigclassic_onetail', 'RFexclsiginverse_onetail'};
 RFCI = struct();
 for f = 1:numel(RFCIfields)
     RFCI.(RFCIfields{f}) = eval(RFCIfields{f});
 end
+
+
 
 end
