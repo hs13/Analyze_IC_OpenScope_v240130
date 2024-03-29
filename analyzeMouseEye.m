@@ -72,9 +72,14 @@ for ises = 1:Nsessions
     if (c-1)*size(N,1)+r ~= mi
         error('check max point in histogram')
     end
-    disp([xbinctrs(r) ybinctrs(c)])
     
     modecom = [xbinctrs(r) ybinctrs(c)];
+%     disp(modecom)
+%     figure; plot(pupiltracking.data(1,:),pupiltracking.data(2,:),'.')
+%     hold on; scatter(modecom(1), modecom(2), 100,'rx', 'linewidth', 2)
+%     figure; histogram2(pupiltracking.data(1,:),pupiltracking.data(2,:),'displaystyle', 'tile')
+%     hold on; scatter(modecom(1), modecom(2), 100,'rx', 'linewidth', 2)
+    
     distmodecom = sqrt(sum((pupiltracking.data'-modecom).^2,2));
     % when distmodecom threshold is set to 10 pixels, 50% of the trials are preserved
     
