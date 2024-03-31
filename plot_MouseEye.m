@@ -81,10 +81,9 @@ title('pupil position distmodecom<20')
 
 %% trials should start -0.5s before and end 1s after stim onset
 % 1/nanmedian(diff(TrackEyeTimestamps)) roughly 60 Hz frame rate
+load([pathpp 'trackmouseeye.mat'])
 eyecamframerate = 60;
 trackeyetli = -30:60;
-trialdistmodecom = struct();
-likelyblinkpsth = struct();
 trialpupildata = struct();
 tic
 for b = 1:numel(visblocks)
@@ -100,14 +99,6 @@ for b = 1:numel(visblocks)
     trackeyetrialinds = (r-1)+trackeyetli;
     trackeyetl = trackeyetli/eyecamframerate;
 
-    trackeyepsth = distmodecom(trackeyetrialinds);
-
-    trialdistmodecom.(visblocks{b}).trackeyetli = trackeyetli;
-    trialdistmodecom.(visblocks{b}).psthtrialinds = trackeyetrialinds;
-    trialdistmodecom.(visblocks{b}).psth = trackeyepsth;
-
-    likelyblinkpsth.(visblocks{b}) = likelyblink(trackeyetrialinds);
-    
     tempdata = squeeze(pupiltracking.data(1,:));
     trialpupildata.(visblocks{b}).x = tempdata(trackeyetrialinds);
     tempdata = squeeze(pupiltracking.data(2,:));
