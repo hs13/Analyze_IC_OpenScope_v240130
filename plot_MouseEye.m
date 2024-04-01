@@ -126,7 +126,39 @@ ICtrialtypes = [0 101 105 106 107 109 110 111 506 511 1105 1109 1201 1299 ...
 
 whichblock = 'ICwcfg1_presentations';
 tloi = trackeyetli>0 & trackeyetli<=0.4*eyecamframerate;
+xl = prctile(trialpupildata.(whichblock).x(:),[0.5 99.5]);
+yl = prctile(trialpupildata.(whichblock).y(:),[0.5 99.5]);
 
-trialsoi = vis.(whichblock).trialorder
-trialpupildata.(whichblock).x(:,tloi)
-trialpupildata.(whichblock).y(:,tloi)
+tt2p = [106 107 110 111];
+figure
+for s = 1:numel(tt2p)
+subplot(2,2,s)
+trialsoi = vis.(whichblock).trialorder==find(ICtrialtypes==tt2p(s))-1;
+tempx = trialpupildata.(whichblock).x(trialsoi,tloi);
+tempy = trialpupildata.(whichblock).y(trialsoi,tloi);
+
+[N,XEDGES,YEDGES] = histcounts2(tempx(:),tempy(:));
+xctrs = ( XEDGES(1:end-1)+XEDGES(2:end) )/2;
+yctrs = ( YEDGES(1:end-1)+YEDGES(2:end) )/2;
+% histogram2(tempx(:),tempy(:), 'displaystyle', 'tile')
+% colormap redblue
+hold on
+[M,c] = contour(repmat(xctrs,length(yctrs),1), repmat(yctrs',1,length(xctrs)), N', 'linewidth', 3);
+
+disp(c.LevelList)
+if ~ismember(200, c.LevelList)
+    error('200 is not one of the levels..')
+end
+Mcell = cell(size(c.LevelList));
+cnt = 1;
+for ilev = 1:length(c.LevelList)
+    Mcell{ilev} = M(:,cnt+1:cnt+M(2,cnt));
+    cnt = cnt+M(2,cnt)+1;
+end
+plot(Mcell{c.LevelList==250}(1,:), Mcell{c.LevelList==250}(2,:), 'r:', 'linewidth', 2)
+title(tt2p(s))
+% axis([xl yl])
+colorbar
+end
+
+
