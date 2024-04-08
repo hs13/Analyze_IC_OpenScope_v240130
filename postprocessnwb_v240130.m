@@ -167,6 +167,8 @@ for ises = 1:numel(nwbsessions)
             vis.(visblocks{b}).MaskDiaVisDeg = 16;
             % note, made the order of RFcentersrel match that in matlab (start
             % down, then move counterclockwise)
+            % Y-DIRECTION FLIPPED FROM PSYCHTOOLBOX (in psychtoolbox, + is
+            % down; in openscope dataset, -1 is down)
             vis.(visblocks{b}).RFcentersrel = [-1 0
                 -1/sqrt(2) 1/sqrt(2)
                 0 1

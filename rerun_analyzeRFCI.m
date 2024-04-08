@@ -96,8 +96,8 @@ for ises = 1:Nsessions
     save([pathpp 'RFCIall_onetail.mat'], 'RFCIall', 'RFCIall_fixedgaze')
 end
 
-%%
-%% report percent trials left in modified fixed gaze condition, where only the first 150 ms out of 250 ms of each orientation is analyzed
+%% TODO: fixedgaze gazedisthresh to 10, redefine RFCI analysis to include first 150ms of each orientation in a spinning
+% %% report percent trials left in modified fixed gaze condition, where only the first 150 ms out of 250 ms of each orientation is analyzed
 % in the RFCI block, each trial is 1s spinning grating, 0.25s at each orientation
 % with gazedistthresh of 10pix (~4visual degrees), this leaves ~30 percent
 % trials in most sessions
@@ -127,6 +127,7 @@ trackeyetl = trackeyetli/eyecamframerate;
 % %% get trialpupildata
 load([pathpp 'trackmouseeye.mat'])
 trialpupildata = struct();
+trialpupilarea = struct();
 for b = 1:numel(visblocks)
     if contains(visblocks{b}, 'spontaneous')
         continue
@@ -144,8 +145,10 @@ for b = 1:numel(visblocks)
     trialpupildata.(visblocks{b}).x = tempdata(trackeyetrialinds);
     tempdata = squeeze(pupiltracking.data(2,:));
     trialpupildata.(visblocks{b}).y = tempdata(trackeyetrialinds);
-end
 
+    trialpupilarea.(visblocks{b}) = pupiltracking.area(trackeyetrialinds);
+end
+save([pathpp 'trialpupil.mat'], 'eyecamframerate', 'trackeyetli', 'trialpupildata', 'trialpupilarea')
 
 % %% get frontRFCItrialsfix10pix
 b = find(strcmp(visblocks, 'RFCI_presentations'));
@@ -181,6 +184,7 @@ Nneurons = length(sponFRall);
 temptrialorder = vis.RFCI_presentations.trialorder(1:4:end);
 tempR = squeeze(mean(reshape(Rall.RFCI_presentations,4,length(temptrialorder),Nneurons),1))';
 
+load([pathpp 'postprocessed_probeC.mat'], 'psthtli')
 psthtl = psthtli/1000;
 RFCIfrontpsthtli = (psthtl>=0 & psthtl<winfront) | (psthtl>=0.25 & psthtl<0.25+winfront) | ...
     (psthtl>=0.25*2 & psthtl<0.25*2+winfront) | (psthtl>=0.25*3 & psthtl<0.25*3+winfront);
@@ -205,7 +209,7 @@ end
 % figure; hold all; histogram(RR150); histogram(RR125)
 
 % RESUME HERE
-% validRFCIfix = true;
+validRFCIfix = true;
 fixcrftrials = frontRFCItrialsfix10pix & floor(temptrialorder/10000) == 0;% &
 if ~isequal( unique(floor(mod(temptrialorder(fixcrftrials), 1000) / 10)), (0:8)' )
     validRFCIfix = false;
@@ -234,7 +238,7 @@ tempgazedist = trialmaxdistmodecom.RFCI_presentations(1:4:end);
 templikelyblink = triallikelyblink.RFCI_presentations(1:4:end);
 temptrialsfixedgaze = tempgazedist<20 & ~templikelyblink;
 
-% validRFCIfix = true;
+validRFCInonfix = true;
 nonfixcrftrials = ~temptrialsfixedgaze & floor(temptrialorder/10000) == 0;% &
 if ~isequal( unique(floor(mod(temptrialorder(nonfixcrftrials), 1000) / 10)), (0:8)' )
     validRFCInonfix = false;
@@ -257,7 +261,7 @@ else
     disp('fixedgaze RFCI block skipped')
 end
 
-save([pathpp 'RFCIall_frontfix.mat'], 'trialpupildata', 'winfront', 'frontRFCItrialsfix10pix', ...
+save([pathpp 'RFCIall_frontfix.mat'], 'winfront', 'frontRFCItrialsfix10pix', ...
     'trialmaxdistmodecom', 'triallikelyblink', 'Rall_RFCIfront10pix', ...
     'RFCIall_frontfix10pix', 'RFCIall_nonfix20pix')
     

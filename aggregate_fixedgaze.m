@@ -8,7 +8,7 @@ nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
     ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
 Nsessions = numel(nwbsessions);
 
-gazedistthresh = 20;
+gazedistthresh = 10;
 
 % A-AM, B-PM, C-V1, D-LM, E-AL, F-RL
 probes = {'A', 'B', 'C', 'D', 'E', 'F'};
@@ -606,13 +606,14 @@ if aggpsth
 end
 
 %% MATCH BETWEEN CRF POSITION FOR ALL TRIALS VS FIXED GAZE TRIALS: ~63% neurons show match
-load([datadir 'postprocessed\openscope_popavg_all.mat'], 'RFCIall')
+popavg = load([datadir 'postprocessed\openscope_popavg_all.mat']);
 
 neuinarea = strcmp(neulocall, 'VISp2/3'); % 86% neurons show match
-RFindclassic = RFCIall.RFindclassic;
+neuvalfg = ismember(popavg.sesneuall, sesneuall);
+RFindclassic = popavg.RFCIall.RFindclassic(neuvalfg);
 
 %neuoi = neuinarea;
-neuoi = neuinarea & RFCIall.Pkw_rfclassic<0.05;
+neuoi = neuinarea & popavg.RFCIall.Pkw_rfclassic(neuvalfg)<0.05;
 figure; histogram2(RFindclassic(neuoi), RFCI_fixedgazeall.RFindclassic(neuoi), 'displaystyle', 'tile')
 
 disp('match between CRF position for all trials vs fixed gaze trials')
