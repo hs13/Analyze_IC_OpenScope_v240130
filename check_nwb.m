@@ -296,9 +296,9 @@ visdeg16 = nnz(tempcumvec==tempcumvec(round(length(tempcumvec)/2)));
 ICtrialtypedescription = {'Blank', 'X', 'T_C_1', 'I_C_1', 'L_C_1', 'T_C_2', 'L_C_2', 'I_C_2', ...
     'I_R_E_1', 'I_R_E_2', 'T_R_E_1', 'T_R_E_2', 'X_R_E_1', 'X_R_E_2', ...
     'In_B_R', 'In_B_L', 'In_T_L', 'In_T_R', 'Out_B_R', 'Out_B_L', 'Out_T_L', 'Out_T_L'};
+whichblock = 'ICwcfg1_presentations';
 
 % put all images into a 2 by 11 grid
-whichblock = 'ICwcfg1_presentations';
 ICwcfg1allimgs = zeros(1200*2, 1200*11);
 imkeys = nwb.stimulus_templates.get(whichblock).image.keys;
 for ii = 1:numel(imkeys)
@@ -328,7 +328,7 @@ end
 % text(30+(c-1)*1200,30+(r-1)*1200, sprintf('(%d) %s', ii-1, ICtrialtypedescription{ii}), 'Color', 'c', 'FontSize', 14, 'FontWeight', 'bold', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top')
 % end
 
-% put all images into a 3 by 8 grid
+% put all images into a 3 by 8 grid (for openscope data portal)
 rlist = [1*ones(1,8) 2*ones(1,6) 3*ones(1,8)];
 clist = [1:8 1:6 1:8];
 ICwcfg1_allimgs = zeros(1200*3, 1200*8);

@@ -531,6 +531,10 @@ if aggpsth
         'Ronstdall', 'Roffstdall', '-v7.3') %'psthsemall', 
 end
 
+%%
+copyfile('S:\OpenScopeData\00248_v240130\postprocessed\openscope_popavg_all.mat', 'G:\My Drive\RESEARCH\ICexpts_revision23\')
+copyfile('S:\OpenScopeData\00248_v240130\postprocessed\openscope_psthavgall.mat', 'G:\My Drive\RESEARCH\ICexpts_revision23\')
+
 %{
 %% report number of units in each area/session/probe
 aggneuloc = cat(1,neulocagg{:});

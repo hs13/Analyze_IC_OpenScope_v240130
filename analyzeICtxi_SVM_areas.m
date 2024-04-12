@@ -4,11 +4,7 @@
 % but retnuns [label, score] when there are only two classes
 % 2. before, trials2anal (balanced trials if trial repeat is different amongst train trial types) was ignored after being computed -- now train and test trials are only being drawn from trials2anal
 
-datadir = '/global/scratch/users/hyeyoung_shin/ICexpts_postprocessed_OpenScope/';
-issavio = exist(datadir, 'dir');
-if ~issavio
-    datadir = 'S:\OpenScopeData\00248_v230821\';
-end
+datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
 nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
@@ -19,7 +15,7 @@ Nsessions = numel(nwbsessions);
 % takes ~50hrs per session...
 rng('shuffle')
 for ises = 1:Nsessions
-    clearvars -except issavio datadir nwbsessions ises whichSVMkernel svmdesc preproc
+    clearvars -except datadir nwbsessions ises whichSVMkernel svmdesc preproc
     sesclk = tic;
     
     allblocks = true;
@@ -27,9 +23,9 @@ for ises = 1:Nsessions
     optimizeSVM = true;
     computesilencesubsets = false;
     
-    %svmdesc = 'trainICRCtestRE';
-    %preproc = 'meancenter'; % zscore or minmax or meancenter
-    %whichSVMkernel = 'Linear';
+    svmdesc = 'trainICRC';
+    preproc = 'zscore'; % zscore or minmax or meancenter
+    whichSVMkernel = 'Linear';
     
     Nsplits = 10;
     
@@ -47,7 +43,8 @@ for ises = 1:Nsessions
     end
     
     % using VISp2 instead of VISp2/3 to avoid error
-    areas2anal = {'LGd', 'LP', 'VISp2', 'VISp4', 'VISp5', 'VISp6'};
+    % areas2anal = {'LGd', 'LP', 'VISp2', 'VISp4', 'VISp5', 'VISp6'};
+    areas2anal = {'VISp', 'VISl', 'VISrl', 'VISal', 'VISpm', 'VISam', 'LGd', 'LP'};
     if allblocks
         ICblocks = {'ICkcfg0_presentations','ICkcfg1_presentations','ICwcfg0_presentations','ICwcfg1_presentations'};
     else
@@ -56,19 +53,20 @@ for ises = 1:Nsessions
     ICtrialtypes = [0 101 105 106 107 109 110 111 506 511 1105 1109 1201 1299 ...
         1301 1302 1303 1304 1305 1306 1307 1308];
     
-    load([pathpp 'info_electrodes.mat']) %'electrode_probeid', 'electrode_localid', 'electrode_id', 'electrode_location', '-v7.3')
-    load([pathpp 'info_units.mat']) %'unit_ids', 'unit_peakch', 'unit_times_idx', 'unit_wfdur'
-    elecid = electrode_id+1;
-    revmapelecid = NaN(max(elecid),1);
-    revmapelecid(elecid) = 1:numel(elecid);
-    neuallloc = electrode_location(revmapelecid(unit_peakch+1));
-    
     load(sprintf('%spostprocessed.mat', pathpp ))
     load(sprintf('%svisresponses.mat', pathpp ))
-    
+    load(sprintf('%sqc_units.mat', pathpp ))
+    neuRS = unit_wfdur>0.4;
+    neufilt = (unit_isi_violations<0.5 & unit_amplitude_cutoff<0.5 & unit_presence_ratio>0.9);
+
     for a = 1:numel(areas2anal)
+        % neu2anal = contains(neuallloc, areas2anal{a});
         whichvisarea = areas2anal{a};
-        neu2anal = contains(neuallloc, areas2anal{a});
+        if strcmp(whichvisarea, 'VISp')
+            neu2anal = neuRS & contains(neuallloc, 'VISp') & ~contains(neuallloc, 'VISpm');
+        else
+            neu2anal = neuRS & contains(neuallloc, whichvisarea);
+        end
         if nnz(neu2anal)==0
             fprintf('%s %s has no units, skipping...\n', mousedate, areas2anal{a})
             continue
@@ -145,7 +143,7 @@ for ises = 1:Nsessions
                 end
                 % disp(sum(cat(2, subsets2silence{:}), 1))
             end
-            %% discriminability index
+            %% train SVM
             SVM_models = struct();
             SVMout = struct();
             
@@ -156,10 +154,10 @@ for ises = 1:Nsessions
             
             alltrialtypes = unique(trialorder);
             switch svmdesc
-                case 'trainICRCtestRE'
+                case 'trainICRC'
                     traintrialtypes = [106, 107, 110, 111];
-                    probetrialtypes = [1105, 1109, 1201, 1299, 0, 101, 105, 109];
-                case 'trainRExtestICRC'
+                    probetrialtypes = [1105, 1109];
+                case 'trainREx'
                     traintrialtypes = [1201, 1299];
                     probetrialtypes = [106, 107, 110, 111];
                 case 'trainIC1RC1'
@@ -174,6 +172,7 @@ for ises = 1:Nsessions
             Nprobett = numel(probetrialtypes);
             Nalltt = numel(alltrialtypes);
             
+            SVMout.neu2anal = neu2anal;
             SVMout.Nneurons = Nneurons;
             SVMout.exptid = ICblocks{b};
             SVMout.ICtrialtypes = ICtrialtypes;
@@ -225,15 +224,16 @@ for ises = 1:Nsessions
             
             SVMout.trialorder = trialorder;
             
-            randtrialorder=randperm(numrectrials);
-            SVMout.randtrialorder = randtrialorder;
+            % randtrialorder=randperm(numrectrials);
+            % SVMout.randtrialorder = randtrialorder;
+            % trials2anal = randtrialorder(ismember(randtrialorder, SVMout.analtrials));
             
             SVM_models.(whichR) = cell(1, Nsplits);
             
             SVMout.(whichR).traintrialinds = zeros(Ntraintrials, Nsplits);
             SVMout.(whichR).testtrialinds = zeros(Ntesttrials, Nsplits);
             
-            SVMout.(whichR).Ylabs = cell(Ntt, Nsplits);
+            % SVMout.(whichR).Ylabs = cell(Ntt, Nsplits);
             
             if computesilencesubsets
                 for isd = 0:numel(silencedescs)
@@ -255,18 +255,23 @@ for ises = 1:Nsessions
                         if isd>0
                             svmmd = [svmmd '_' silencedescs{isd}];
                         end
-                        SVMout.(whichR).(svmmd).label = cell(tempNtrials, Nsplits);
+                        SVMout.(whichR).(svmmd).label = NaN(tempNtrials, Nsplits);
                         SVMout.(whichR).(svmmd).score = NaN(tempNtrials,Ntt, Nsplits);
                     end
                 end
             end
-            
-            % takes 20 min per trial type pair. 2000 min per session (33 hr)
-            trials2anal = randtrialorder(ismember(randtrialorder, SVMout.analtrials));
+
+            % Nsplits-fold cross-validation
+            trials2analind = find(trials2anal); % consider randomizing the order of this
+            C = cvpartition(trialorder(trials2analind),'KFold',Nsplits, 'Stratify',true);
+            if ~( all(C.TrainSize==Ntraintrials) && all(C.TestSize==Ntesttrials) )
+                error('check balancing trials')
+            end
             for isplit = 1:Nsplits
                 close all
                 ttclk = tic;
                 
+                %{
                 testtrialinds = zeros(Ntesttrials,1);
                 traintrialinds = zeros(Ntraintrials,1);
                 for typi1 = 1:Ntt
@@ -284,7 +289,13 @@ for ises = 1:Nsessions
                 end
                 testtrialinds = trials2anal(ismember(trials2anal, testtrialinds));
                 traintrialinds = trials2anal(ismember(trials2anal, traintrialinds));
-                
+                %}
+
+                idxTrain = training(C,isplit);
+                traintrialinds = trials2analind(idxTrain);
+                idxTest = test(C,isplit);
+                testtrialinds = trials2analind(idxTest);
+
                 if any(ismember(traintrialinds, testtrialinds))
                     error('train and test trials should not overlap')
                 end
@@ -317,15 +328,13 @@ for ises = 1:Nsessions
                 end
                 
                 X = Tp(traintrialinds,:);
-                Y = strsplit(sprintf('%d\n',trialorder(traintrialinds)), '\n')';
-                Y = Y(1:end-1);
+                Y = reshape(trialorder(traintrialinds),[],1);
                 
                 %                 X = X(randomizedtraintrialorder, :);
                 %                 Y = Y(randomizedtraintrialorder);
                 
                 Xtest = Tp(testtrialinds,:);
-                Ytest = strsplit(sprintf('%d\n',trialorder(testtrialinds)), '\n')';
-                Ytest = Ytest(1:end-1);
+                Ytest = reshape(trialorder(testtrialinds),[],1);
                 
                 Xprobe = Tp(probetrials,:);
                 Xall = Tp(alltrials,:);
@@ -339,18 +348,7 @@ for ises = 1:Nsessions
                 % Display diagnostic messages during training by using the 'Verbose' name-value pair argument.
                 
                 Ylabs = unique(Y);
-                tempYlaborder = randperm(numel(Ylabs));
-                [~,reverseYlaborder]=sort(tempYlaborder);
-                Ylabs = Ylabs(tempYlaborder);
-                SVMout.(whichR).Ylabs(:,isplit) = Ylabs;
-                
-                Yrelabeled = zeros(size(Y));
-                for iy = 1:numel(Ylabs)
-                    Yrelabeled(strcmp(Y, Ylabs(iy))) = iy;
-                end
-                if ~isequal(Ylabs(Yrelabeled), Y)
-                    error('Y does not match relabeled')
-                end
+                SVMout.(whichR).Ylabs = Ylabs;
                 
                 switch whichSVMkernel
                     case 'RBF'
@@ -361,11 +359,11 @@ for ises = 1:Nsessions
                         t = templateSVM('Standardize',true,'KernelFunction', 'polynomial' , 'PolynomialOrder', 2);
                 end
                 if optimizeSVM
-                    SVMModel = fitcecoc(X,Yrelabeled,'Learners',t,'FitPosterior',false, ...
-                        'ClassNames', 1:numel(Ylabs), 'Verbose',0, 'OptimizeHyperparameters', 'auto', ...
+                    SVMModel = fitcecoc(X,Y,'Learners',t,'FitPosterior',false, ...
+                        'ClassNames', Ylabs, 'Verbose',0, 'OptimizeHyperparameters', 'auto', ...
                         'HyperparameterOptimizationOptions', struct('UseParallel',true, 'ShowPlots', false));
                 else
-                    SVMModel = fitcecoc(X,Yrelabeled,'Learners',t,'FitPosterior',false, 'ClassNames', 1:numel(Ylabs), 'Verbose',0);
+                    SVMModel = fitcecoc(X,Y,'Learners',t,'FitPosterior',false, 'ClassNames', Ylabs, 'Verbose',0);
                 end
                 %                 CVMdl = crossval(SVMModel);
                 
@@ -393,9 +391,9 @@ for ises = 1:Nsessions
                             tempSVMmodel = SVMModel;
                             svmmd = 'all';
                     end
-                    [tempilabel,tempscore] = predict(tempSVMmodel,Xtemp);
-                    SVMout.(whichR).(svmmd).label(:,isplit) = Ylabs(tempilabel);
-                    SVMout.(whichR).(svmmd).score(:,:,isplit) = tempscore(:, reverseYlaborder);
+                    [templabel,tempscore] = predict(tempSVMmodel,Xtemp);
+                    SVMout.(whichR).(svmmd).label(:,isplit) = templabel;
+                    SVMout.(whichR).(svmmd).score(:,:,isplit) = tempscore;
                 end
                 
                 if computesilencesubsets
@@ -424,9 +422,9 @@ for ises = 1:Nsessions
                             svmmd = [svmmd '_' silencedescs{isd}];
                             Xtemp(:,subsets2silence{isd})=0;
                             
-                            [tempilabel,tempscore] = predict(tempSVMmodel,Xtemp);
-                            SVMout.(whichR).(svmmd).label(:,isplit) = Ylabs(tempilabel);
-                            SVMout.(whichR).(svmmd).score(:,:,isplit) = tempscore(:, reverseYlaborder);
+                            [templabel,tempscore] = predict(tempSVMmodel,Xtemp);
+                            SVMout.(whichR).(svmmd).label(:,isplit) = templabel;
+                            SVMout.(whichR).(svmmd).score(:,:,isplit) = tempscore;
                         end
                     end
                 end

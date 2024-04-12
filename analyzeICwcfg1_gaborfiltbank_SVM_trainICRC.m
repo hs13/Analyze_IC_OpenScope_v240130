@@ -30,7 +30,7 @@ c = parcluster;
 c.NumWorkers = 12;
 parpool(c)
 
-gfbdir = 'C:\Users\USER\GitHub\Analyze_IC_OpenScope_v240130\visICtxiwcfg1\';
+gfbdir = 'G:\My Drive\RESEARCH\ICexpts_revision23\visICtxiwcfg1\';
 rfpixs = [26 53 79 106];
 
 for irf = 1:length(rfpixs)
@@ -275,3 +275,44 @@ for irf = 1:length(rfpixs)
 
     save(svmfn, 'SVMgabor_models', 'SVMgabor', '-v7.3')
 end
+
+%%
+% load('G:\My Drive\RESEARCH\ICexpts_revision23\visICtxiwcfg1\SVMtrainICRC_ICwcfg1_gaborfiltbank53.mat', 'SVMgabor')
+load('G:\My Drive\RESEARCH\ICexpts_revision23\visICtxiwcfg1\SVMtrainICRC_ICwcfg1_gaborfiltbank26.mat', 'SVMgabor')
+
+Nsplits = size(SVMgabor.testtrialinds,2);
+Ntt = length(SVMgabor.traintrialtypes);
+testriallabel = SVMgabor.trialorder(SVMgabor.testtrialinds);
+HRtest = NaN(Ntt,Ntt,Nsplits);
+for ii = 1:Ntt
+    temptestin = testriallabel==SVMgabor.traintrialtypes(ii);
+    for jj = 1:Ntt
+    temptestout = SVMgabor.test.label==SVMgabor.traintrialtypes(jj);
+    HRtest(ii,jj,:) = sum(temptestin & temptestout,1)./sum(temptestin,1);
+    end
+end
+if ~all(sum(HRtest,2)==1, 'all')
+    error('check HRtest')
+end
+
+REttrialtypes = [1105 1109];
+HRREt = NaN(length(REttrialtypes),Ntt,Nsplits);
+for ii = 1:length(REttrialtypes)
+    trialsoi = SVMgabor.trialorder==REttrialtypes(ii);
+    for jj = 1:Ntt
+        HRREt(ii,jj,:) = mean(SVMgabor.all.label(trialsoi,:)==SVMgabor.traintrialtypes(jj), 1);
+    end
+end
+if ~all(sum(HRREt,2)==1, 'all')
+    error('check HRREt')
+end
+
+figure; imagesc(squeeze(mean(HRREt,3)))
+clim([0 1])
+
+HR_TREasIC = squeeze( (HRREt(1,1,:)+HRREt(2,4,:))/2 );
+HR_TREasLC = squeeze( (HRREt(1,2,:)+HRREt(2,3,:))/2 );
+
+figure; hold all
+plot(HR_TREasIC, HR_TREasLC, 'o');
+plot(HR_TREasIC, HR_TREasIC, '-');
