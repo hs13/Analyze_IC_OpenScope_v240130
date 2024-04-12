@@ -32,11 +32,7 @@ for ises = 1:Nsessions
     mousedate = nwbsessions{ises};
     fprintf(strcat('%d  ', mousedate, '\n'), ises)
     
-    if issavio
-        pathpp = [datadir mousedate filesep];
-    else
-        pathpp = [datadir 'postprocessed' filesep mousedate filesep];
-    end
+    pathpp = [datadir 'postprocessed' filesep mousedate filesep];
     pathsvm = [datadir 'SVM_' svmdesc '_selectareas' filesep mousedate filesep];
     if ~exist(pathsvm, 'dir')
         mkdir(pathsvm)
