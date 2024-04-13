@@ -31,41 +31,17 @@ for ises = ses2anal
     if ~exist(pathsv, 'dir')
         mkdir(pathsv)
     end
-    %%
+    
     load([pathpp 'info_electrodes.mat']) %'electrode_probeid', 'electrode_localid', 'electrode_id', 'electrode_location'
     load([pathpp 'info_units.mat']) %'unit_ids', 'unit_peakch', 'unit_times_idx', 'unit_wfdur') %'unit_times_data'
-    load([pathpp 'spiketimes.mat'])
+%     load([pathpp 'spiketimes.mat'])
     load([pathpp 'visresponses.mat'])
     % isequal(ststartend, [floor(min(unit_times_data)/Tres)+1 floor(max(unit_times_data)/Tres)+1])
     Tres = 0.001; % 1ms
     
-    elecid = electrode_id+1;
-    revmapelecid = NaN(max(elecid),1);
-    revmapelecid(elecid) = 1:numel(elecid);
-    electrode_location = cellstr(electrode_location);
-    neuloc = electrode_location(revmapelecid(unit_peakch+1));
-    
-    
-    switch neuopt
-        case 'ctx'
-            neuctx = contains(neuloc, 'VIS');
-        case 'ctrctx'
-            neuctx = contains(neuloc, 'VIS') & RFCIall.RFindclassic==1 & RFCIall.Pkw_rfclassic<0.05;
-        case 'ctxL23'
-            neuctx = contains(neuloc, 'VIS') & contains(neuloc, '2/3');
-    end
-    neuctxind = find(neuctx) ;
-    
-    %%
-    
-    % neuctx = [];
-    % neuctxind = [];
-    % for iprobe = 1:6
-    % tempneuoind = find(floor(unit_peakch/1000)==iprobe-1);
-    % tempneuloc = electrode_location(revmapelecid(unit_peakch(tempneuoind)+1));
-    % neuctx = cat(1, neuctx, contains(tempneuloc, 'VIS'));
-    % neuctxind = cat(1, neuctxind, tempneuoind(contains(tempneuloc, 'VIS')));
-    % end
+    %% extract spike times
+    neuctx = contains(neuallloc, 'VIS');
+    neuctxind = find(neuctx);
     
     Nneuctx = numel(neuctxind);
     neulocctx = neuloc(neuctxind);
@@ -82,6 +58,43 @@ for ises = ses2anal
         visarealabels(neuinarea) = a;
     end
     
+    ststartend = [floor(min(unit_times_data)/Tres)+1 floor(max(unit_times_data)/Tres)+1];
+    ICblockstartend = [vis.ICwcfg1_presentations.start_time(1) vis.ICwcfg1_presentations.stop_time(end)];
+    ICblockstartend = floor(ICblockstartend/Tres)+1;
+    
+    Nneurons = length(unit_ids);
+    spiketimes = cell(Nneurons, 1);
+    last_idx = 0;
+    for ii = 1:Nneurons
+        unit_id = unit_ids(ii);
+        
+        %     assert(unit_trials_idx(i) == unit_times_idx(i), 'Expected unit boundaries to match between trials & spike_times jagged arrays')
+        start_idx = last_idx + 1;
+        end_idx = unit_times_idx(ii);
+        
+        spiketimes{ii} = unit_times_data(start_idx:end_idx);
+        
+        last_idx = end_idx;
+    end
+    
+    Tres = 0.001; % 1ms
+    stlen = ceil((max(unit_times_data)+1)/Tres); % add 1s buffer/padding after the last spike timing
+    
+    disp([stlen, Nneurons])
+    save([pathpp 'spiketimes.mat'], 'spiketimes', 'neuallloc', 'neuctx', 'neuctxind', 'neulocctx', ...
+        'recarealabels', 'visarealabels', 'ststartend', 'ICblockstartend', '-v7.3')
+    
+    %%    
+    switch neuopt
+        case 'ctx'
+            neuctx = contains(neuallloc, 'VIS');
+        case 'ctrctx'
+            neuctx = contains(neuallloc, 'VIS') & RFCIall.RFindclassic==1 & RFCIall.Pkw_rfclassic<0.05;
+        case 'ctxL23'
+            neuctx = contains(neuallloc, 'VIS') & contains(neuallloc, '2/3');
+    end
+    neuctxind = find(neuctx) ;
+    
     %%
     ctxspiketrain = false(Nneuctx, ststartend(end) );
     for ii = 1:Nneuctx
@@ -89,8 +102,6 @@ for ises = ses2anal
         ctxspiketrain(ii, floor(spiketimes{ci}/Tres)+1) = true;
     end
     
-    ICblockstartend = [vis.ICwcfg1_presentations.start_time(1) vis.ICwcfg1_presentations.stop_time(end)];
-    ICblockstartend = floor(ICblockstartend/Tres)+1;
     ctxspiketrain = ctxspiketrain(:,ICblockstartend(1):ICblockstartend(2));
     % ctxspiketrain = ctxspiketrain(:,ststartend(1):ststartend(2));
     
@@ -98,8 +109,6 @@ for ises = ses2anal
     spkcntvec = sum(ctxspiketrain,2);
     sqrtspkcntmat = sqrt( spkcntvec * spkcntvec' );
 
-    % save([pathpp 'spiketimes.mat'], 'spiketimes', 'neuloc', 'neuctx', 'neuctxind', 'neulocctx', ...
-    %     'recarealabels', 'visarealabels', 'ststartend', 'ICblockstartend', '-v7.3')
     
     %%
     NFFT = 2^ceil(log2(stlen));
