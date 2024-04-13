@@ -11,6 +11,9 @@ sensory sensitivity can be cauculated with:
 -mutual information between vis stim and neural responses
 %}
 % IMPORTANT NOT TO DO GENPATH
+% addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
+addpath(genpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v240130'))
+
 datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
@@ -40,11 +43,17 @@ for ises = ses2anal
     Tres = 0.001; % 1ms
     
     %% extract spike times
+    nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));
+    [~, fileind] = min(cellfun(@length, {nwbfiles.name}));
+    nwbspikefile = fullfile([nwbfiles(fileind).folder filesep nwbfiles(fileind).name]);
+    nwb = nwbRead(nwbspikefile); %, 'ignorecache');
+    unit_times_data = nwb.units.spike_times.data.load();
+    
     neuctx = contains(neuallloc, 'VIS');
     neuctxind = find(neuctx);
     
     Nneuctx = numel(neuctxind);
-    neulocctx = neuloc(neuctxind);
+    neulocctx = neuallloc(neuctxind);
     % isequal(neulocctx, find(contains(neuloc, 'VIS')))
     
     recarealabels = {'VISp', 'VISl', 'VISrl', 'VISal', 'VISpm', 'VISam'};
