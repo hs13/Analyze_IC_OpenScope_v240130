@@ -3,6 +3,7 @@
 % 1. predict returns [label, NegLoss, PBScore] when there are >2 classes,
 % but retnuns [label, score] when there are only two classes
 % 2. before, trials2anal (balanced trials if trial repeat is different amongst train trial types) was ignored after being computed -- now train and test trials are only being drawn from trials2anal
+clear all; close all; clc
 
 datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
@@ -162,6 +163,8 @@ for ises = 1:Nsessions
                 case 'trainIC2RC2'
                     traintrialtypes = [111 110];
                     probetrialtypes = [1109];
+                otherwise
+                    error(['set ' svmdesc])
             end
             
             Ntt = numel(traintrialtypes);
@@ -431,12 +434,12 @@ for ises = 1:Nsessions
             
             
             switch svmdesc
-                case 'trainICRCtestRE'
+                case 'trainICRC'
                     SVMtrainICRC = SVMout;
                     SVMtrainICRC_models = SVM_models;
                     save(svmfn, 'preproc', 'whichSVMkernel', 'SVMtrainICRC', '-v7.3')
                     save(svmmdlfn, 'preproc', 'whichSVMkernel', 'SVMtrainICRC_models', '-v7.3')
-                case 'trainRExtestICRC'
+                case 'trainREx'
                     SVMtrainREx = SVMout;
                     SVMtrainREx_models = SVM_models;
                     save(svmfn, 'preproc', 'whichSVMkernel', 'SVMtrainREx', '-v7.3')
@@ -451,6 +454,8 @@ for ises = 1:Nsessions
                     SVMtrainIC2RC2_models = SVM_models;
                     save(svmfn, 'preproc', 'whichSVMkernel', 'SVMtrainIC2RC2', '-v7.3')
                     save(svmmdlfn, 'preproc', 'whichSVMkernel', 'SVMtrainIC2RC2_models', '-v7.3')
+                otherwise
+                    error('failed at saving')
             end
             
             fprintf('%s %s %s %s done!\n', mousedate, whichSVMkernel, whichvisarea, whichICblock)
