@@ -10,7 +10,6 @@ whichSVMkernel = 'Linear';
 whichICblock = 'ICwcfg1';
 whichblock = [whichICblock '_presentations'];
 visareas = {'VISp', 'VISl', 'VISrl', 'VISal', 'VISpm', 'VISam'};
-probes = {'A', 'B', 'C', 'D', 'E', 'F'};
 
 switch svmdesc
     case 'trainICRC'
@@ -22,34 +21,41 @@ switch svmdesc
 end
 %%
 pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
-pathsv = [datadir 'postprocessed' filesep 'SVM' filesep 'SVM_' svmdesc filesep];
+pathsv = [datadir 'SVM_' svmdesc '_selectareas' filesep];
 pathsvm = [pathsv nwbsessions{ises} filesep];
 
 load([pathpp 'postprocessed.mat'])
 
 SVMall = struct();
 for a = 1:numel(visareas)
+    clearvars SVMtrainICRC SVMtrainREx
     whichvisarea = visareas{a};
-    load([pathsvm, 'SVM_', svmdesc, '_', whichvisarea, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat'])    
-    switch svmdesc
-        case 'trainICRC'
-            clearvars SVMtrainICRC
-            SVMall.(whichvisarea) = SVMtrainICRC;
-        case 'trainREx'
-            clearvars SVMtrainREx
-            SVMall.(whichvisarea) = SVMtrainREx;
-        otherwise
-            error([svmdesc ' not recognized'])
+    svmfn = [pathsvm, 'SVM_', svmdesc, '_', whichvisarea, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat'];
+    if ~exist(svmfn, 'file')
+        SVMall.(whichvisarea) = [];
+    else
+        load(svmfn)
+        switch svmdesc
+            case 'trainICRC'
+                SVMall.(whichvisarea) = SVMtrainICRC;
+            case 'trainREx'
+                SVMall.(whichvisarea) = SVMtrainREx;
+            otherwise
+                error([svmdesc ' not recognized'])
+        end
     end
 end
 
 %%
+whichvisarea = 'VISp';
 traintrialtypes = SVMall.(whichvisarea).trialorder(SVMall.(whichvisarea).spkcnt.traintrialinds);
 
 trainaccuracy = NaN(numel(visareas), 1);
 for a = 1:numel(visareas)
     whichvisarea = visareas{a};
+    if ~isempty(SVMall.(whichvisarea))
     trainaccuracy(a) = mean(SVMall.(whichvisarea).spkcnt.train.label == traintrialtypes, 'all');
+    end
 end
 
 %% test trials: check that there is correlation between area decoders

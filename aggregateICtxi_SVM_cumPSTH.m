@@ -11,7 +11,6 @@ Twin = 5;
 whichICblock = 'ICwcfg1';
 whichblock = [whichICblock '_presentations'];
 visareas = {'VISp', 'VISl', 'VISrl', 'VISal', 'VISpm', 'VISam'};
-probes = {'A', 'B', 'C', 'D', 'E', 'F'};
 
 switch svmdesc
     case 'trainICRC'
@@ -32,14 +31,13 @@ load([pathpp 'postprocessed.mat'])
 
 SVMall = struct();
 for a = 1:numel(visareas)
+    clearvars SVMtrainICRC SVMtrainREx
     whichvisarea = visareas{a};
     load([pathsvm, 'SVM_', svmdesc, '_', whichvisarea, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat'])    
     switch svmdesc
         case 'trainICRC'
-            clearvars SVMtrainICRC
             SVMall.(whichvisarea) = SVMtrainICRC;
         case 'trainREx'
-            clearvars SVMtrainREx
             SVMall.(whichvisarea) = SVMtrainREx;
         otherwise
             error([svmdesc ' not recognized'])

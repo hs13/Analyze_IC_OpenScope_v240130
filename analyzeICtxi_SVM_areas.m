@@ -10,24 +10,24 @@ nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
 nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
     ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
-
 Nsessions = numel(nwbsessions);
+
+svmdesc = 'trainICRC';
+preproc = 'zscore'; % zscore or minmax or meancenter
+whichSVMkernel = 'Linear';
+neuopt = '';
 
 % takes ~50hrs per session...
 rng('shuffle')
-for ises = 1:Nsessions
-    clearvars -except datadir nwbsessions ises whichSVMkernel svmdesc preproc
+for ises = 2%1:Nsessions
+    clearvars -except datadir nwbsessions ises whichSVMkernel svmdesc preproc neuopt
     sesclk = tic;
     
-    allblocks = true;
+    allblocks = false;
     computeSVM = true;
     optimizeSVM = true;
     computesilencesubsets = false;
-    
-    svmdesc = 'trainREx';
-    preproc = 'zscore'; % zscore or minmax or meancenter
-    whichSVMkernel = 'Linear';
-    
+
     Nsplits = 10;
     
     mousedate = nwbsessions{ises};
@@ -55,14 +55,24 @@ for ises = 1:Nsessions
     load(sprintf('%sqc_units.mat', pathpp ))
     neuRS = unit_wfdur>0.4;
     neufilt = (unit_isi_violations<0.5 & unit_amplitude_cutoff<0.5 & unit_presence_ratio>0.9);
+    switch neuopt
+        case ''
+            neucrit = true(size(neuallloc));
+        case 'RS'
+            neucrit = neuRS;
+        case 'filtRS'
+            neucrit = neufilt & neuRS;
+        otherwise
+            error('neuron criterion not recognized')
+    end
 
     for a = 1:numel(areas2anal)
         % neu2anal = contains(neuallloc, areas2anal{a});
         whichvisarea = areas2anal{a};
         if strcmp(whichvisarea, 'VISp')
-            neu2anal = neuRS & contains(neuallloc, 'VISp') & ~contains(neuallloc, 'VISpm');
+            neu2anal = neucrit & contains(neuallloc, 'VISp') & ~contains(neuallloc, 'VISpm');
         else
-            neu2anal = neuRS & contains(neuallloc, whichvisarea);
+            neu2anal = neucrit & contains(neuallloc, whichvisarea);
         end
         if nnz(neu2anal)==0
             fprintf('%s %s has no units, skipping...\n', mousedate, areas2anal{a})
@@ -73,11 +83,11 @@ for ises = 1:Nsessions
             tempsplit = strsplit(ICblocks{b}, '_');
             whichICblock = tempsplit{1};
             if computesilencesubsets
-                svmfn = strcat(pathsvm, 'SVM_', svmdesc, '_', whichvisarea, '_', whichSVMkernel, '_', preproc, '_silencesubsets_', whichICblock, '.mat');
-                svmmdlfn = strcat(pathsvm, 'SVMmodels_', svmdesc, '_', whichvisarea, '_', whichSVMkernel, '_', preproc, '_silencesubsets_', whichICblock, '.mat');
+                svmfn = strcat(pathsvm, 'SVM_', svmdesc, '_', whichvisarea, neuopt, '_', whichSVMkernel, '_', preproc, '_silencesubsets_', whichICblock, '.mat');
+                svmmdlfn = strcat(pathsvm, 'SVMmodels_', svmdesc, '_', whichvisarea, neuopt, '_', whichSVMkernel, '_', preproc, '_silencesubsets_', whichICblock, '.mat');
             else
-                svmfn = strcat(pathsvm, 'SVM_', svmdesc, '_', whichvisarea, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat');
-                svmmdlfn = strcat(pathsvm, 'SVMmodels_', svmdesc, '_', whichvisarea, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat');
+                svmfn = strcat(pathsvm, 'SVM_', svmdesc, '_', whichvisarea, neuopt, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat');
+                svmmdlfn = strcat(pathsvm, 'SVMmodels_', svmdesc, '_', whichvisarea, neuopt, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat');
             end
             if exist(svmfn, 'file')
                 fprintf('%s already exists, skipping...\n', svmfn)

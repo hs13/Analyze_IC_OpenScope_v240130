@@ -11,12 +11,12 @@ whichICblock = 'ICwcfg1';
 whichblock = [whichICblock '_presentations'];
 visareas = {'VISp', 'VISl', 'VISrl', 'VISal', 'VISpm', 'VISam'};
 probes = {'A', 'B', 'C', 'D', 'E', 'F'};
-
+neuopt = 'RS';
 %%
 for ises = 1:numel(nwbsessions)
     clearvars -except datadir nwbsessions ises svmdesc preproc whichSVMkernel whichICblock whichblock visareas probes 
     pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
-    pathsv = [datadir 'postprocessed' filesep 'SVM' filesep 'SVM_' svmdesc filesep];
+    pathsv = [datadir 'SVM_' svmdesc '_selectareas' filesep];
     pathsvm = [pathsv nwbsessions{ises} filesep];
 % load([pathpp 'spiketimes.mat']) %, 'neuctx')
 
@@ -39,8 +39,8 @@ for ises = 1:numel(nwbsessions)
         fprintf('%d/%d %s %s\n', ises, numel(nwbsessions), svmdesc, whichvisarea)
         tic
 
-        svmfn = strcat(pathsvm, 'SVM_', svmdesc, '_', whichvisarea, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat');
-        svmmdlfn = strcat(pathsvm, 'SVMmodels_', svmdesc, '_', whichvisarea, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat');
+        svmfn = strcat(pathsvm, 'SVM_', svmdesc, '_', whichvisarea, neuopt, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat');
+        svmmdlfn = strcat(pathsvm, 'SVMmodels_', svmdesc, '_', whichvisarea, neuopt, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat');
         if ~exist(svmmdlfn, 'file')
             disp([svmmdlfn ' does not exist'])
             continue
@@ -148,7 +148,7 @@ for ises = 1:numel(nwbsessions)
         isequal(2*tempscore, SVMout.spkcnt.all.score)
         max(abs(2*tempscore(:)-SVMout.spkcnt.all.score(:)))
         %}
-        save([pathsvm, 'SVMcumpsth' num2str(Twin) 'ms_', svmdesc, '_', whichvisarea, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat'], ...
+        save([pathsvm, 'SVMcumpsth' num2str(Twin) 'ms_', svmdesc, '_', whichvisarea, neuopt, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat'], ...
             'SVMcumpsth', '-v7.3')
         toc
     end
