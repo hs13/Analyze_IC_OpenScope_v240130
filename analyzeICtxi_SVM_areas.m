@@ -24,7 +24,7 @@ for ises = 1:Nsessions
     optimizeSVM = true;
     computesilencesubsets = false;
     
-    svmdesc = 'trainICRC';
+    svmdesc = 'trainREx';
     preproc = 'zscore'; % zscore or minmax or meancenter
     whichSVMkernel = 'Linear';
     
