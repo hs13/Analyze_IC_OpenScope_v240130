@@ -132,19 +132,22 @@ for ises = 1:numel(nwbsessions)
                 SVMcumpsth.score(ibin,:,:,isplit) = tempscore;
             end
         end
+        %{
         isequal(tempR, squeeze(cumpsthbin(end,:,:)) )
         Xtemp = ( tempR-mean(tempR(traintrialinds,:),1) )./std(tempR(traintrialinds,:),0,1);
         Xtemp(isnan(Xtemp))=0;
         [tempRlabel,tempRscore] = predict(tempSVMmodel,Xtemp); % Xtemp is Ntrials X Nneurons
         isequal(squeeze(SVMout.spkcnt.all.label(:,isplit)), tempRlabel)
         isequal(squeeze(SVMout.spkcnt.all.score(:,:,isplit)), tempRscore)
-        figure; plot( 2*tempRscore(:), reshape(squeeze(SVMout.spkcnt.all.score(:,:,isplit)),[],1), '.')
-        % SVMout score is roughly twice that of the new calculation... why?
+        figure; plot( tempRscore(:), reshape(squeeze(SVMout.spkcnt.all.score(:,:,isplit)),[],1), '.')
+        % SVMout score is roughly twice that of the new calculation... but
+        % only in MAC!!! (in Windows, where it was originally calculated,
+        % these two almost match, although not exactly...
         
         tempscore = squeeze(SVMcumpsth.score(end,:,:,:));
         isequal(2*tempscore, SVMout.spkcnt.all.score)
         max(abs(2*tempscore(:)-SVMout.spkcnt.all.score(:)))
-        
+        %}
         save([pathsvm, 'SVMcumpsth' num2str(Twin) 'ms_', svmdesc, '_', whichvisarea, '_', whichSVMkernel, '_', preproc, '_', whichICblock, '.mat'], ...
             'SVMcumpsth', '-v7.3')
         toc
