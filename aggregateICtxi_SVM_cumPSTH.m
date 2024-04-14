@@ -63,19 +63,6 @@ isequal( squeeze(traintrialtypes(si)), SVMall.(whichvisarea).spkcnt.all.label)
 isequal(SVMall.(whichvisarea).spkcnt.traintrialinds, SVMcumpsthall.(whichvisarea).traintrialinds)
 isequal(SVMall.(whichvisarea).spkcnt.testtrialinds, SVMcumpsthall.(whichvisarea).testtrialinds)
 
-isplit = 1;
-testtrialinds = SVMcumpsthall.(whichvisarea).testtrialinds(:,isplit);
-ii=1;
-itrial = testtrialinds(ii);
-figure
-for a = 1:numel(visareas)
-    whichvisarea = visareas{a};
-tempsvmcumpsth = squeeze( SVMcumpsthall.(whichvisarea).score(:,itrial,:,isplit) );
-subplot(2,3,a)
-plot(SVMcumpsthall.(whichvisarea).psthbinTends, tempsvmcumpsth)
-title(whichvisarea)
-end
-
 % compare score between correct vs incorrect trials
 % incorrect trials do have lower scores, but the distribution is not
 % exactly separate
@@ -95,17 +82,76 @@ hold all
 histogram(testscore(testlabel==testtrialtypes))
 histogram(testscore(testlabel~=testtrialtypes))
 
+cumpsthtl = SVMcumpsthall.VISp.psthbinTends;
+[ttindsordered,~]=sort(SVMcumpsthall.VISp.testtrialinds(:));
+testtrialstt = SVMcumpsthall.VISp.trialorder(ttindsordered);
+testlabelfinal = struct();
+testscorecumpsth = struct();
+for a = 1:numel(visareas)
+    whichvisarea = visareas{a};
+    finallabel = squeeze(SVMcumpsthall.(whichvisarea).label(end,:,:));
+    
+    Ntesttrials = size(SVMcumpsthall.(whichvisarea).testtrialinds,1);
+    Nsplits = size(SVMcumpsthall.(whichvisarea).testtrialinds,2);
+    origtestlabel = NaN(length(cumpsthtl), Ntesttrials, Nsplits);
+    origtestscore = NaN(length(cumpsthtl), Ntesttrials, Nsplits);
+    for isplit = 1:Nsplits
+        testtrialinds = SVMcumpsthall.(whichvisarea).testtrialinds(:,isplit);
+        origtestlabel(:,:,isplit) = SVMcumpsthall.(whichvisarea).label(:,testtrialinds,isplit);
+        for itt = 1:numel(traintrialtypes)
+            temptrials = finallabel(testtrialinds,isplit)==traintrialtypes(itt);
+            origtestscore(:,temptrials,isplit) = squeeze(SVMcumpsthall.(whichvisarea).score(:,testtrialinds(temptrials),itt,isplit));
+        end
+    end
+    origtestlabel = reshape(origtestlabel, length(cumpsthtl), Ntesttrials*Nsplits);
+    origtestscore = reshape(origtestscore, length(cumpsthtl), Ntesttrials*Nsplits);
+    
+    finaltestlabel = origtestlabel(end,:);
+    
+    [tti,testtrialord]=sort(SVMcumpsthall.(whichvisarea).testtrialinds(:));
+    if ~isequal(ttindsordered, tti)
+        error('test trial set different for every area?')
+    end
+    testlabelfinal.(whichvisarea) = finaltestlabel(testtrialord);
+    testscorecumpsth.(whichvisarea) = origtestscore(:,testtrialord);    
+end
 
-cumpsthtl = SVMcumpsthall.(whichvisarea).psthbinTends;
-Ntesttrials = size(SVMcumpsthall.(whichvisarea).testtrialinds,1);
-Nsplits = size(SVMcumpsthall.(whichvisarea).testtrialinds,2);
-testscorecumpsth = NaN(length(cumpsthtl), Ntesttrials, Nsplits);
-for isplit = 1:Nsplits
-testtrialinds = SVMcumpsthall.(whichvisarea).testtrialinds(:,isplit);
-
-testscorecumpsth(:,:,isplit)
+normtestscorecumpsth = struct();
+for a = 1:numel(visareas)
+    whichvisarea = visareas{a};
+    tempts = testscorecumpsth.(whichvisarea);
+    normtestscorecumpsth.(whichvisarea) = (tempts-tempts(1,:))./(tempts(end,:)-tempts(1,:));
 end
 
 % IC test trials
 % first, focus on V1 and LM, and on trials where both areas' decoders had correct predictions
+itt =1;
+figure
+for a = 1:numel(visareas)
+    whichvisarea = visareas{a};
+    trialsoi = testtrialstt==traintrialtypes(itt);
+    subplot(1,numel(visareas),a)
+    imagesc(cumpsthtl,1:nnz(trialsoi), testscorecumpsth.(whichvisarea)(:,trialsoi)')
+    colorbar
+end
 
+whichvisareaA = 'VISp';
+whichvisareaB = 'VISal';
+trialsoind = find( testtrialstt==traintrialtypes(itt) & ...
+    testlabelfinal.(whichvisareaA)==traintrialtypes(itt) & testlabelfinal.(whichvisareaB)==traintrialtypes(itt) );
+figure
+for ii = 1:12
+    subplot(3,4,ii)
+    hold all
+    plot(cumpsthtl, normtestscorecumpsth.(whichvisareaA)(:,trialsoind(ii)))
+    plot(cumpsthtl, normtestscorecumpsth.(whichvisareaB)(:,trialsoind(ii)))
+end
+
+% find the first timepoint at which normtestscorecumpsth crosses 
+% 0.25, 0.5, 0.75 (called T25, T50, T75 respsectively)
+% divide into 4 trial types
+% 1. areaA faster than areaB if all three timeponts (T25, T50, T75) are earlier for A than B
+% 2. areaB faster than areaA if all three timeponts (T25, T50, T75) are earlier for A than B
+% 3. areaA ramping starts earlier and finishes later than area B
+% 4. areaB ramping starts earlier and finishes later than area A
+% 5. crisscrossing if T25 and T75 go in one direction and T50 goes in the opposite direction
