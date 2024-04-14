@@ -42,19 +42,22 @@ for ises = ses2anal
     % isequal(ststartend, [floor(min(unit_times_data)/Tres)+1 floor(max(unit_times_data)/Tres)+1])
     Tres = 0.001; % 1ms
     
-    %% extract spike times
-    nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));
-    [~, fileind] = min(cellfun(@length, {nwbfiles.name}));
-    nwbspikefile = fullfile([nwbfiles(fileind).folder filesep nwbfiles(fileind).name]);
-    nwb = nwbRead(nwbspikefile); %, 'ignorecache');
-    unit_times_data = nwb.units.spike_times.data.load();
-    
     neuctx = contains(neuallloc, 'VIS');
     neuctxind = find(neuctx);
     
     Nneuctx = numel(neuctxind);
     neulocctx = neuallloc(neuctxind);
     % isequal(neulocctx, find(contains(neuloc, 'VIS')))
+    
+    %% extract spike times
+    if exist([pathpp 'spiketimes.mat'], 'file')
+        load([pathpp 'spiketimes.mat'])
+    else
+    nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));
+    [~, fileind] = min(cellfun(@length, {nwbfiles.name}));
+    nwbspikefile = fullfile([nwbfiles(fileind).folder filesep nwbfiles(fileind).name]);
+    nwb = nwbRead(nwbspikefile); %, 'ignorecache');
+    unit_times_data = nwb.units.spike_times.data.load();
     
     recarealabels = {'VISp', 'VISl', 'VISrl', 'VISal', 'VISpm', 'VISam'};
     visarealabels = zeros(Nneuctx,1);
@@ -92,7 +95,8 @@ for ises = ses2anal
     disp([stlen, Nneurons])
     save([pathpp 'spiketimes.mat'], 'spiketimes', 'neuallloc', 'neuctx', 'neuctxind', 'neulocctx', ...
         'recarealabels', 'visarealabels', 'ststartend', 'ICblockstartend', '-v7.3')
-    
+    end
+
     %%    
     switch neuopt
         case 'ctx'

@@ -3,7 +3,7 @@ nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
 nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
 
-svmdesc = 'trainICRC';
+svmdesc = 'trainREx';
 preproc = 'zscore'; % '' is z-score train trials, '_zscoreall', or '_meancenter'
 whichSVMkernel = 'Linear';
 
@@ -14,7 +14,7 @@ probes = {'A', 'B', 'C', 'D', 'E', 'F'};
 
 %%
 for ises = 1:numel(nwbsessions)
-    clearvars -except datadir nwbsessions ises svmdesc preproc whichSVMkernel whichICblock probes 
+    clearvars -except datadir nwbsessions ises svmdesc preproc whichSVMkernel whichICblock whichblock visareas probes 
     pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
     pathsv = [datadir 'postprocessed' filesep 'SVM' filesep 'SVM_' svmdesc filesep];
     pathsvm = [pathsv nwbsessions{ises} filesep];
