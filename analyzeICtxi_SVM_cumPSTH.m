@@ -3,6 +3,7 @@ nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
 nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
 
+neuopt = 'RS';
 svmdesc = 'trainREx';
 preproc = 'zscore'; % '' is z-score train trials, '_zscoreall', or '_meancenter'
 whichSVMkernel = 'Linear';
@@ -11,7 +12,7 @@ whichICblock = 'ICwcfg1';
 whichblock = [whichICblock '_presentations'];
 visareas = {'VISp', 'VISl', 'VISrl', 'VISal', 'VISpm', 'VISam'};
 probes = {'A', 'B', 'C', 'D', 'E', 'F'};
-neuopt = 'RS';
+
 %%
 for ises = 1:numel(nwbsessions)
     clearvars -except datadir nwbsessions ises svmdesc preproc whichSVMkernel whichICblock whichblock visareas probes 
