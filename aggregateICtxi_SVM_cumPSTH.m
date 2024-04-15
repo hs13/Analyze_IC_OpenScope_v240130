@@ -158,10 +158,30 @@ for a = 1:numel(visareas)
     colorbar
 end
 
+% check that reordering went well
+Ntt2p = 4;
+tt2p = randperm(length(testtrialstt),Ntt2p);
+figure
+for a = 1:numel(visareas)
+    whichvisarea = visareas{a};
+    for t = 1:Ntt2p
+        itrial = tt2p(t);
+subplot(Ntt2p, numel(visareas), (t-1)*numel(visareas)+a)
+hold all
+plot(cumpsthtl, testscorecumpsth.(whichvisarea)(:,itrial), 'k--', 'linewidth', 1)
+[r,c]=find(SVMcumpsthall.(whichvisarea).testtrialinds==ttindsordered(itrial));
+tempcumpsth = squeeze(SVMcumpsthall.(whichvisarea).score(:,ttindsordered(itrial),:,c));
+plot(cumpsthtl, tempcumpsth)
+title(sprintf('%s test trial #%d', whichvisarea, itrial))
+    end
+end
+
 whichvisareaA = 'VISp';
 whichvisareaB = 'VISal';
 trialsoind = find( testtrialstt==traintrialtypes(itt) & ...
     testlabelfinal.(whichvisareaA)==traintrialtypes(itt) & testlabelfinal.(whichvisareaB)==traintrialtypes(itt) );
+
+
 % example trials
 figure
 for ii = 1:12
