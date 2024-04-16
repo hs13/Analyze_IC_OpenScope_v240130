@@ -8,8 +8,7 @@ clear all; close all; clc
 datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
-nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
-    ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
+nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
 Nsessions = numel(nwbsessions);
 
 svmdesc = 'trainICRC';
