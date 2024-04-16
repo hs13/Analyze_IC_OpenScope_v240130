@@ -1,6 +1,7 @@
+%% RESUME HERE: EDIT CODE FROM trainICRC to trainREx
 discardbelowNneurons = 50;
 whichICblock = 'ICwcfg1';
-SVMall = SVMtrainICRCagg.(whichICblock);
+SVMall = SVMtrainRExagg.(whichICblock);
 Nsessions = numel(SVMall);
 
 visareas = {'VISp', 'VISl', 'VISrl', 'VISal', 'VISpm', 'VISam'};
@@ -89,7 +90,7 @@ for ises = 1:Nsessions
 end
 
 
-TREtrialtypes = [1105, 1109];
+ICtrialtypes = [106, 111];
 probehc2 = struct();
 probeNtrials = struct();
 probehc2val = struct(); % invalidate trials where there was a tie for mode predictions across K-fold cross-validation
@@ -113,21 +114,21 @@ end
 ABfield = [whichvisareaA '_' whichvisareaB];
 
 ttbe = 0.5*([traintrialtypes(1)-1 traintrialtypes] + [traintrialtypes traintrialtypes(end)+1]);
-probehc2.(ABfield) = NaN(length(traintrialtypes), length(traintrialtypes), length(TREtrialtypes), Nsessions);
-probeNtrials.(ABfield) = zeros(length(TREtrialtypes), Nsessions);
-probehc2val.(ABfield) = NaN(length(traintrialtypes), length(traintrialtypes), length(TREtrialtypes), Nsessions);
-probeNvaltrials.(ABfield) = zeros(length(TREtrialtypes), Nsessions);
+probehc2.(ABfield) = NaN(length(traintrialtypes), length(traintrialtypes), length(ICtrialtypes), Nsessions);
+probeNtrials.(ABfield) = zeros(length(ICtrialtypes), Nsessions);
+probehc2val.(ABfield) = NaN(length(traintrialtypes), length(traintrialtypes), length(ICtrialtypes), Nsessions);
+probeNvaltrials.(ABfield) = zeros(length(ICtrialtypes), Nsessions);
 for ises = 1:Nsessions
     if Nneuronsperarea(ises,a)<discardbelowNneurons || Nneuronsperarea(ises,b)<discardbelowNneurons
         continue
     end
-for iprobe = 1:length(TREtrialtypes)
-    probetrialsA = SVMall(ises).(whichvisareaA).trialorder==TREtrialtypes(iprobe);
+for iprobe = 1:length(ICtrialtypes)
+    probetrialsA = SVMall(ises).(whichvisareaA).trialorder==ICtrialtypes(iprobe);
     [probepredA,FA,CA] = mode( SVMall(ises).(whichvisareaA).spkcnt.all.label(probetrialsA,:),2 );    
     validtrialsA = cellfun(@numel, CA)==1;
     % figure; hold all; histogram(FA,-0.5:10.5); histogram(FA(~validtrialsA),-0.5:10.5)
 
-    probetrialsB = SVMall(ises).(whichvisareaB).trialorder==TREtrialtypes(iprobe);
+    probetrialsB = SVMall(ises).(whichvisareaB).trialorder==ICtrialtypes(iprobe);
     [probepredB,FB,CB] = mode( SVMall(ises).(whichvisareaB).spkcnt.all.label(probetrialsB,:),2 );
     validtrialsB = cellfun(@numel, CB)==1;
     
@@ -147,40 +148,40 @@ end
 % match null distribution for inference trials:
 % calculate for each trial type
 % use mode prediction across K-fold cross-validation (i.e., Nsplits)
-TREpredmatch = cell(size(TREtrialtypes));
-TREpredmatchnull = cell(size(TREtrialtypes));
-TREpredmatchprctile = cell(size(TREtrialtypes));
+ICpredmatch = cell(size(ICtrialtypes));
+ICpredmatchnull = cell(size(ICtrialtypes));
+ICpredmatchprctile = cell(size(ICtrialtypes));
 tic
-for ii = 1:numel(TREtrialtypes)
-TREpredmatch{ii} = NaN(numel(visareas), numel(visareas), Nsessions);
-TREpredmatchnull{ii} = NaN(numel(visareas), numel(visareas), Nshuf, Nsessions);
-TREpredmatchprctile{ii} =  NaN(numel(visareas), numel(visareas), Nsessions);
+for ii = 1:numel(ICtrialtypes)
+ICpredmatch{ii} = NaN(numel(visareas), numel(visareas), Nsessions);
+ICpredmatchnull{ii} = NaN(numel(visareas), numel(visareas), Nshuf, Nsessions);
+ICpredmatchprctile{ii} =  NaN(numel(visareas), numel(visareas), Nsessions);
 for ises = 1:Nsessions
 for a = 1:numel(visareas)
     whichvisareaA = visareas{a};
     if Nneuronsperarea(ises,a)<discardbelowNneurons
         continue
     end
-    TREtrials = SVMall(ises).(whichvisareaA).trialorder==TREtrialtypes(ii);
-    TRElabelA = SVMall(ises).(whichvisareaA).spkcnt.all.label(TREtrials);
+    ICtrials = SVMall(ises).(whichvisareaA).trialorder==ICtrialtypes(ii);
+    IClabelA = SVMall(ises).(whichvisareaA).spkcnt.all.label(ICtrials);
     for b = a+1:numel(visareas)
         whichvisareaB = visareas{b};
         if Nneuronsperarea(ises,b)<discardbelowNneurons
             continue
         end
-        if ~isequal( TREtrials, SVMall(ises).(whichvisareaB).trialorder==TREtrialtypes(ii))
+        if ~isequal( ICtrials, SVMall(ises).(whichvisareaB).trialorder==ICtrialtypes(ii))
             error('trialorder should be same across all decoders within same session')
         end
-        TRElabelB = SVMall(ises).(whichvisareaB).spkcnt.all.label(TREtrials);
-        TREpredmatch{ii}(a,b,ises) = mean(TRElabelA==TRElabelB);
+        IClabelB = SVMall(ises).(whichvisareaB).spkcnt.all.label(ICtrials);
+        ICpredmatch{ii}(a,b,ises) = mean(IClabelA==IClabelB);
         
         
         for ishuf = 1:Nshuf
-            TRElabelBshuf = TRElabelB(randperm(numel(TRElabelB)));
-            TREpredmatchnull{ii}(a,b,ishuf,ises) = mean(TRElabelA==TRElabelBshuf);
+            IClabelBshuf = IClabelB(randperm(numel(IClabelB)));
+            ICpredmatchnull{ii}(a,b,ishuf,ises) = mean(IClabelA==IClabelBshuf);
         end
 
-        TREpredmatchprctile{ii}(a,b,ises) = 100*mean(TREpredmatchnull{ii}(a,b,:,ises)<TREpredmatch{ii}(a,b,ises),3);
+        ICpredmatchprctile{ii}(a,b,ises) = 100*mean(ICpredmatchnull{ii}(a,b,:,ises)<ICpredmatch{ii}(a,b,ises),3);
         
     end
 end
@@ -188,44 +189,46 @@ end
 toc
 end
 
-I_C_trialtypes = [106 111];
-TREasICmatch = cell(size(TREtrialtypes));
-TREasICmatchnull = cell(size(TREtrialtypes));
-TREasICmatchprctile = cell(size(TREtrialtypes));
-for ii = 1:numel(TREtrialtypes)
+XREtrialtypes = [1201 1299];
+ICasXREmatch = cell(size(ICtrialtypes));
+ICasXREmatchnull = cell(size(ICtrialtypes));
+ICasXREmatchprctile = cell(size(ICtrialtypes));
+for ii = 1:numel(ICtrialtypes)
 tic
-TREasICmatch{ii} = NaN(numel(visareas), numel(visareas), Nsessions);
-TREasICmatchnull{ii} = NaN(numel(visareas), numel(visareas), Nshuf, Nsessions);
-TREasICmatchprctile{ii} =  NaN(numel(visareas), numel(visareas), Nsessions);
+ICasXREmatch{ii} = NaN(numel(visareas), numel(visareas), Nsessions);
+ICasXREmatchnull{ii} = NaN(numel(visareas), numel(visareas), Nshuf, Nsessions);
+ICasXREmatchprctile{ii} =  NaN(numel(visareas), numel(visareas), Nsessions);
 for ises = 1:Nsessions
 for a = 1:numel(visareas)
     whichvisareaA = visareas{a};
     if Nneuronsperarea(ises,a)<discardbelowNneurons
         continue
     end
-    TREtrials = SVMall(ises).(whichvisareaA).trialorder==TREtrialtypes(ii);
-    TRElabelA = SVMall(ises).(whichvisareaA).spkcnt.all.label(TREtrials)==I_C_trialtypes(ii);
+    ICtrials = SVMall(ises).(whichvisareaA).trialorder==ICtrialtypes(ii);
+    IClabelA = SVMall(ises).(whichvisareaA).spkcnt.all.label(ICtrials)==XREtrialtypes(ii);
     for b = a+1:numel(visareas)
         whichvisareaB = visareas{b};
         if Nneuronsperarea(ises,b)<discardbelowNneurons
             continue
         end
-        if ~isequal( TREtrials, SVMall(ises).(whichvisareaB).trialorder==TREtrialtypes(ii))
+        if ~isequal( ICtrials, SVMall(ises).(whichvisareaB).trialorder==ICtrialtypes(ii))
             error('trialorder should be same across all decoders within same session')
         end
-        TRElabelB = SVMall(ises).(whichvisareaB).spkcnt.all.label(TREtrials)==I_C_trialtypes(ii);
-        TREasICmatch{ii}(a,b,ises) = mean(TRElabelA & TRElabelB);
+        IClabelB = SVMall(ises).(whichvisareaB).spkcnt.all.label(ICtrials)==XREtrialtypes(ii);
+        ICasXREmatch{ii}(a,b,ises) = mean(IClabelA & IClabelB);
         
         for ishuf = 1:Nshuf
-            TRElabelBshuf = TRElabelB(randperm(numel(TRElabelB)));
-            TREasICmatchnull{ii}(a,b,ishuf,ises) = mean(TRElabelA & TRElabelBshuf);
+            IClabelBshuf = IClabelB(randperm(numel(IClabelB)));
+            ICasXREmatchnull{ii}(a,b,ishuf,ises) = mean(IClabelA & IClabelBshuf);
         end
-        TREasICmatchprctile{ii}(a,b,ises) = 100*mean(TREasICmatchnull{ii}(a,b,:,ises)<TREasICmatch{ii}(a,b,ises),3);
+        ICasXREmatchprctile{ii}(a,b,ises) = 100*mean(ICasXREmatchnull{ii}(a,b,:,ises)<ICasXREmatch{ii}(a,b,ises),3);
     end
 end
 end
 toc
 end
+isequaln(ICpredmatch, ICasXREmatch)
+figure; plot(ICpredmatch{ii}(:), ICasXREmatch{ii}(:), 'o')
 
 %% plot test trial prediction match between pairs of areas
 figure
@@ -305,6 +308,12 @@ colormap redblue
 colorbar
 title('test trial prediction match - chance')
 
+disp('V1 & LM testpredmatchprctile')
+disp(squeeze(testpredmatchprctile(1,2,:)))
+
+disp('V1 & AL testpredmatchprctile')
+disp(squeeze(testpredmatchprctile(1,4,:)))
+
 for a=1:numel(visareas)
     for b=a+1:numel(visareas)
 ptestpred=signrank(reshape(nanmean(testpredmatchnull(a,b,:,:),3),[],1), reshape(testpredmatch(a,b,:),[],1));
@@ -312,32 +321,53 @@ fprintf('%s & %s test match N=%d p=%.4f\n', visarealabels{a}, visarealabels{b}, 
     nnz(~isnan(testpredmatch(a,b,:))), ptestpred)
     end
 end
-% V1 & LM test match N=8 p=0.0078
-% V1 & RL test match N=11 p=0.0029
-% V1 & AL test match N=10 p=0.0020
-% V1 & PM test match N=12 p=0.0005
-% V1 & AM test match N=11 p=0.0020
-% LM & RL test match N=7 p=0.0312
+
+figure; 
+for a = 1:numel(visareas)
+    whichvisareaA = visareas{a};
+    for b = a+1:numel(visareas)
+        whichvisareaB = visareas{b};
+
+        subplot(numel(visareas), numel(visareas), (a-1)*numel(visareas)+b)
+        hold all
+plot(reshape(nanmean(testpredmatchnull(a,b,:,:),3),[],1), reshape(testpredmatch(a,b,:),[],1), 'o')
+xl = xlim;
+plot(xl, xl, 'r-')
+plot(xl, [1 1]/numel(traintrialtypes), 'k--')
+xlabel('null distribution mean')
+ylabel('actual match')
+ptestpred=signrank(reshape(nanmean(testpredmatchnull(a,b,:,:),3),[],1), reshape(testpredmatch(a,b,:),[],1));
+title(sprintf('%s vs %s test match N=%d p=%.4f\n', visarealabels{a}, visarealabels{b}, ...
+    nnz(~isnan(testpredmatch(a,b,:))), ptestpred))
+    end
+end
+
+% V1 & LM test match N=8 p=0.0391
+% V1 & RL test match N=11 p=0.0830
+% V1 & AL test match N=10 p=0.0645
+% V1 & PM test match N=12 p=0.0923
+% V1 & AM test match N=11 p=0.0049
+% LM & RL test match N=7 p=0.0156
 % LM & AL test match N=6 p=0.0312
-% LM & PM test match N=8 p=0.0156
-% LM & AM test match N=7 p=0.1094
-% RL & AL test match N=9 p=0.0039
-% RL & PM test match N=11 p=0.0020
-% RL & AM test match N=10 p=0.0098
-% AL & PM test match N=10 p=0.0039
-% AL & AM test match N=9 p=0.0039
-% PM & AM test match N=11 p=0.0049
+% LM & PM test match N=8 p=0.3125
+% LM & AM test match N=7 p=0.0781
+% RL & AL test match N=9 p=0.0742
+% RL & PM test match N=11 p=0.0186
+% RL & AM test match N=10 p=0.0137
+% AL & PM test match N=10 p=0.0371
+% AL & AM test match N=9 p=0.0195
+% PM & AM test match N=11 p=0.0029
 
 %% inference trials:
 figure
 for a = 1:numel(visareas)
     whichvisareaA = visareas{a};
-    tempREt = squeeze(mean(HR_SVMtrainICRC.(whichICblock).(whichvisareaA).REt,3));
-    infscoreA = squeeze( (tempREt(1,1,:)+tempREt(2,4,:))/2 - (tempREt(1,2,:)+tempREt(2,3,:))/2 );
+    tempprobe = squeeze(mean(HR_SVMtrainREx.(whichICblock).(whichvisareaA).probe,3));
+    infscoreA = squeeze( (tempprobe(1,1,:)+tempprobe(4,2,:))/2 - 0.5 );
     for b = a+1:numel(visareas)
         whichvisareaB = visareas{b};
-    tempREt = squeeze(mean(HR_SVMtrainICRC.(whichICblock).(whichvisareaB).REt,3));
-    infscoreB = squeeze( (tempREt(1,1,:)+tempREt(2,4,:))/2 - (tempREt(1,2,:)+tempREt(2,3,:))/2 );
+    tempprobe = squeeze(mean(HR_SVMtrainREx.(whichICblock).(whichvisareaB).probe,3));
+    infscoreB = squeeze( (tempprobe(1,1,:)+tempprobe(4,2,:))/2 - 0.5 );
 
         subplot(numel(visareas), numel(visareas), (a-1)*numel(visareas)+b)
         hold all
@@ -366,73 +396,39 @@ for ab = 1:2
             error('specify whichvisareaA and whichvisareaB')
     end
     ABfield = [whichvisareaA '_' whichvisareaB];
-    for ii = 1:numel(TREtrialtypes)
+    for ii = 1:numel(ICtrialtypes)
         subplot(2,2,2*(ab-1)+ii)
         imagesc(squeeze(nanmean(probehc2val.(ABfield)(:,:,ii,:),4)))
 set(gca, 'XTick', 1:numel(traintrialtypes), 'XTickLabel', traintrialtypes, ...
     'YTick', 1:numel(traintrialtypes), 'YTickLabel', traintrialtypes)
         xlabel(whichvisareaB)
         ylabel(whichvisareaA)
-        title(sprintf('trial %d', TREtrialtypes(ii) ))
+        title(sprintf('trial %d', ICtrialtypes(ii) ))
 caxis([0 0.25])
     end
 end
 
-figure;
-for ab = 1:2
-    switch ab
-        case 1
-            whichvisareaA = 'VISp';
-            whichvisareaB = 'VISl';
-        case 2
-            whichvisareaA = 'VISp';
-            whichvisareaB = 'VISal';
-        otherwise
-            error('specify whichvisareaA and whichvisareaB')
-    end
-    ABfield = [whichvisareaA '_' whichvisareaB];
-    for ii = 1:numel(TREtrialtypes)
-        switch TREtrialtypes(ii)
-            case 1105
-                AIC_BLC = squeeze(probehc2val.(ABfield)(1,2,1,:));
-                ALC_BIC = squeeze(probehc2val.(ABfield)(2,1,1,:));
-            case 1109
-                AIC_BLC = squeeze(probehc2val.(ABfield)(4,3,2,:));
-                ALC_BIC = squeeze(probehc2val.(ABfield)(3,4,2,:));
-        end
-        subplot(2,2,2*(ab-1)+ii)
-        hold all
-        plot(AIC_BLC, ALC_BIC, 'o')
-        xl = xlim;
-        plot(xl,xl, 'r-')
-        xlabel(sprintf('%s as IC, %s as LC', whichvisareaA, whichvisareaB))
-        ylabel(sprintf('%s as LC, %s as IC', whichvisareaA, whichvisareaB))
-        p = signrank(AIC_BLC, ALC_BIC);
-        title(sprintf('T_R_E_%d p=%.4f', ii, p))
-    end
-end
-
-% TREpredmatch
+% ICpredmatch
 figure; 
-for ii = 1:numel(TREtrialtypes)
+for ii = 1:numel(ICtrialtypes)
 subplot(2,3,3*(ii-1)+1)
-imagesc(squeeze(nanmean(TREpredmatch{ii},3))); 
+imagesc(squeeze(nanmean(ICpredmatch{ii},3))); 
 set(gca, 'XTick', 1:numel(visareas), 'XTickLabel', visarealabels, ...
     'YTick', 1:numel(visareas), 'YTickLabel', visarealabels, 'YDir', 'reverse')
 colormap redblue
 colorbar
-title(sprintf('T_R_E_%d trial prediction match', ii))
+title(sprintf('I_C_%d trial prediction match', ii))
 
 subplot(2,3,3*(ii-1)+2)
-imagesc(squeeze(nanmean(TREpredmatch{ii}-squeeze(mean(TREpredmatchnull{ii},3)),3))); 
+imagesc(squeeze(nanmean(ICpredmatch{ii}-squeeze(mean(ICpredmatchnull{ii},3)),3))); 
 set(gca, 'XTick', 1:numel(visareas), 'XTickLabel', visarealabels, ...
     'YTick', 1:numel(visareas), 'YTickLabel', visarealabels, 'YDir', 'reverse')
 colormap redblue
 colorbar
-title(sprintf('T_R_E_%d trial prediction match - shuf. dist.', ii))
+title(sprintf('I_C_%d trial prediction match - shuf. dist.', ii))
 subplot(2,3,3*(ii-1)+3)
 hold all
-tempmat = squeeze(nanmean(TREpredmatchprctile{ii},3));
+tempmat = squeeze(nanmean(ICpredmatchprctile{ii},3));
 imagesc(tempmat); 
 for a = 1:numel(visareas)
     for b = a+1:numel(visareas)
@@ -445,29 +441,37 @@ set(gca, 'XTick', 1:numel(visareas), 'XTickLabel', visarealabels, ...
 colormap redblue
 caxis([50 100])
 colorbar
-title({sprintf('T_R_E_%d trial prediction match', ii), 'percentile w.r.t. null distribution'})
+title({sprintf('I_C_%d trial prediction match', ii), 'percentile w.r.t. null distribution'})
 end
 
+% not significant -- inference predictions does not match across areas,
+% which argues against global attractive dynamics...
+disp('V1 & LM ICpredmatchprctile')
+disp([squeeze(ICpredmatchprctile{1}(1,2,:)) squeeze(ICpredmatchprctile{2}(1,2,:))])
+
+disp('V1 & AL ICpredmatchprctile')
+disp([squeeze(ICpredmatchprctile{1}(1,4,:)) squeeze(ICpredmatchprctile{2}(1,4,:))])
+
 figure; 
-for ii = 1:numel(TREtrialtypes)
+for ii = 1:numel(ICtrialtypes)
 subplot(2,3,3*(ii-1)+1)
-imagesc(squeeze(nanmean(TREasICmatch{ii},3))); 
+imagesc(squeeze(nanmean(ICasXREmatch{ii},3))); 
 set(gca, 'XTick', 1:numel(visareas), 'XTickLabel', visarealabels, ...
     'YTick', 1:numel(visareas), 'YTickLabel', visarealabels, 'YDir', 'reverse')
 colormap redblue
 colorbar
-title(sprintf('T_R_E_%d as I_C_%d prediction match', ii, ii))
+title(sprintf('I_C_%d as X_R_E_%d prediction match', ii, ii))
 
 subplot(2,3,3*(ii-1)+2)
-imagesc(squeeze(nanmean(TREasICmatch{ii}-squeeze(mean(TREasICmatchnull{ii},3)),3))); 
+imagesc(squeeze(nanmean(ICasXREmatch{ii}-squeeze(mean(ICasXREmatchnull{ii},3)),3))); 
 set(gca, 'XTick', 1:numel(visareas), 'XTickLabel', visarealabels, ...
     'YTick', 1:numel(visareas), 'YTickLabel', visarealabels, 'YDir', 'reverse')
 colormap redblue
 colorbar
-title(sprintf('T_R_E_%d as I_C_%d prediction match - shuf. dist.', ii,ii))
+title(sprintf('I_C_%d as X_R_E_%d prediction match - shuf. dist.', ii,ii))
 subplot(2,3,3*(ii-1)+3)
 hold all
-tempmat = squeeze(nanmean(TREasICmatchprctile{ii},3));
+tempmat = squeeze(nanmean(ICasXREmatchprctile{ii},3));
 imagesc(tempmat); 
 for a = 1:numel(visareas)
     for b = a+1:numel(visareas)
@@ -480,40 +484,47 @@ set(gca, 'XTick', 1:numel(visareas), 'XTickLabel', visarealabels, ...
 colormap redblue
 caxis([50 100])
 colorbar
-title({sprintf('T_R_E_%d as I_C_%d trial prediction match', ii,ii), 'percentile w.r.t. null distribution'})
+title({sprintf('I_C_%d as X_R_E_%d trial prediction match', ii,ii), 'percentile w.r.t. null distribution'})
 end
 
+% not significant
+disp('V1 & LM ICasXREmatchprctile')
+disp([squeeze(ICasXREmatchprctile{1}(1,2,:)) squeeze(ICasXREmatchprctile{2}(1,2,:))])
+
+disp('V1 & AL ICasXREmatchprctile')
+disp([squeeze(ICasXREmatchprctile{1}(1,4,:)) squeeze(ICasXREmatchprctile{2}(1,4,:))])
+
 figure; 
-for ii = 1:numel(TREtrialtypes)
+for ii = 1:numel(ICtrialtypes)
 subplot(2,2,ii)
 hold all
 for ises = 1:Nsessions
-plot(reshape(nanmean(TREpredmatchnull{ii}(:,:,:,ises),3),[],1), reshape(TREpredmatch{ii}(:,:,ises),[],1), 'o')
+plot(reshape(nanmean(ICpredmatchnull{ii}(:,:,:,ises),3),[],1), reshape(ICpredmatch{ii}(:,:,ises),[],1), 'o')
 end
 xl = xlim;
 plot(xl, xl, 'r-')
 plot(xl, [1 1]/numel(traintrialtypes), 'k--')
 xlabel('null distribution mean')
 ylabel('actual match')
-xvec = reshape(nanmean(TREpredmatchnull{ii},3),[],1);
-yvec = reshape(TREpredmatch{ii},[],1);
+xvec = reshape(nanmean(ICpredmatchnull{ii},3),[],1);
+yvec = reshape(ICpredmatch{ii},[],1);
 p=signrank(xvec(~isnan(xvec) & ~isnan(yvec)), yvec(~isnan(xvec) & ~isnan(yvec)));
 % figure; plot(xvec,yvec,'o');hold on; xl-xlim;plot(xl,xl,'r-')
-p=signrank(reshape(nanmean(TREpredmatchnull{ii},3),[],1), reshape(TREpredmatch{ii},[],1));
-title(sprintf('T_R_E_%d pred p=%.4f', ii,p))
+p=signrank(reshape(nanmean(ICpredmatchnull{ii},3),[],1), reshape(ICpredmatch{ii},[],1));
+title(sprintf('I_C_%d pred p=%.4f', ii,p))
 
 subplot(2,2,2+ii)
 hold all
 for ises = 1:Nsessions
-plot(reshape(nanmean(TREasICmatchnull{ii}(:,:,:,ises),3),[],1), reshape(TREasICmatch{ii}(:,:,ises),[],1), 'o')
+plot(reshape(nanmean(ICasXREmatchnull{ii}(:,:,:,ises),3),[],1), reshape(ICasXREmatch{ii}(:,:,ises),[],1), 'o')
 end
 xl = xlim;
 plot(xl, xl, 'r-')
 plot(xl, [1 1]/numel(traintrialtypes), 'k--')
 xlabel('null distribution mean')
 ylabel('actual match')
-p = signrank(reshape(nanmean(TREasICmatchnull{ii},3),[],1), reshape(TREasICmatch{ii},[],1));
-title(sprintf('T_R_E_%d as I_C_%d p=%.4f', ii,ii,p))
+p = signrank(reshape(nanmean(ICasXREmatchnull{ii},3),[],1), reshape(ICasXREmatch{ii},[],1));
+title(sprintf('I_C_%d as X_R_E_%d p=%.4f', ii,ii,p))
 end
 
 for ab = 1:2
@@ -523,31 +534,71 @@ a=1;b=2;
         case 2
 a=1;b=4;
     end
-pTREpred=signrank(reshape(nanmean(TREpredmatchnull{ii}(a,b,:,:),3),[],1), reshape(TREpredmatch{ii}(a,b,:),[],1));
-pTREasIC=signrank(reshape(nanmean(TREasICmatchnull{ii}(a,b,:,:),3),[],1), reshape(TREasICmatch{ii}(a,b,:),[],1));
-fprintf('%s & %s match TRE p=%.4f TRE as IC p=%.4f\n', visarealabels{a}, visarealabels{b}, pTREpred, pTREasIC)
+pTREpred=signrank(reshape(nanmean(ICpredmatchnull{ii}(a,b,:,:),3),[],1), reshape(ICpredmatch{ii}(a,b,:),[],1));
+pTREasIC=signrank(reshape(nanmean(ICasXREmatchnull{ii}(a,b,:,:),3),[],1), reshape(ICasXREmatch{ii}(a,b,:),[],1));
+fprintf('%s & %s match IC p=%.4f IC as XRE p=%.4f\n', visarealabels{a}, visarealabels{b}, pTREpred, pTREasIC)
 end
 
 for a=1:numel(visareas)
     for b=a+1:numel(visareas)        
-pTREpred=signrank(reshape(nanmean(TREpredmatchnull{ii}(a,b,:,:),3),[],1), reshape(TREpredmatch{ii}(a,b,:),[],1));
-pTREasIC=signrank(reshape(nanmean(TREasICmatchnull{ii}(a,b,:,:),3),[],1), reshape(TREasICmatch{ii}(a,b,:),[],1));
-fprintf('%s & %s match N=%d TRE p=%.4f TRE as IC p=%.4f\n', visarealabels{a}, visarealabels{b}, ...
-    nnz(~isnan(TREpredmatch{ii}(a,b,:))), pTREpred, pTREasIC)
+pTREpred=signrank(reshape(nanmean(ICpredmatchnull{ii}(a,b,:,:),3),[],1), reshape(ICpredmatch{ii}(a,b,:),[],1));
+pTREasIC=signrank(reshape(nanmean(ICasXREmatchnull{ii}(a,b,:,:),3),[],1), reshape(ICasXREmatch{ii}(a,b,:),[],1));
+fprintf('%s & %s match N=%d IC p=%.4f IC as XRE p=%.4f\n', visarealabels{a}, visarealabels{b}, ...
+    nnz(~isnan(ICpredmatch{ii}(a,b,:))), pTREpred, pTREasIC)
     end
 end
-% V1 & LM match N=8 TRE p=0.1094 TRE as IC p=0.1094
-% *V1 & RL match N=11 TRE p=0.0068 TRE as IC p=0.0186
-% V1 & AL match N=10 TRE p=0.1055 TRE as IC p=0.1934
-% V1 & PM match N=12 TRE p=0.1294 TRE as IC p=0.1514
-% V1 & AM match N=11 TRE p=0.7646 TRE as IC p=0.4131
-% LM & RL match N=7 TRE p=1.0000 TRE as IC p=0.3750
-% LM & AL match N=6 TRE p=1.0000 TRE as IC p=0.8438
-% LM & PM match N=8 TRE p=0.1484 TRE as IC p=0.4609
-% LM & AM match N=7 TRE p=0.1562 TRE as IC p=0.2188
-% RL & AL match N=9 TRE p=0.5703 TRE as IC p=0.2031
-% RL & PM match N=11 TRE p=0.1230 TRE as IC p=0.2402
-% RL & AM match N=10 TRE p=0.5566 TRE as IC p=0.5566
-% AL & PM match N=10 TRE p=0.0840 TRE as IC p=0.2324
-% AL & AM match N=9 TRE p=0.0195 TRE as IC p=0.5703
-% PM & AM match N=11 TRE p=0.7002 TRE as IC p=0.8984
+
+figure
+for a = 1:numel(visareas)
+    whichvisareaA = visareas{a};
+    for b = a+1:numel(visareas)
+        whichvisareaB = visareas{b};
+
+        subplot(numel(visareas), numel(visareas), (a-1)*numel(visareas)+b)
+hold all
+plot(reshape(nanmean(ICpredmatchnull{ii}(a,b,:,:),3),[],1), reshape(ICpredmatch{ii}(a,b,:),[],1), 'o')
+xl = xlim;
+plot(xl, xl, 'r-')
+plot(xl, [1 1]/numel(traintrialtypes), 'k--')
+xlabel('null distribution mean')
+ylabel('actual match')
+p=signrank(reshape(nanmean(ICpredmatchnull{ii}(a,b,:,:),3),[],1), reshape(ICpredmatch{ii}(a,b,:),[],1));
+title(sprintf('%s vs %s I_C_%d pred p=%.4f', whichvisareaA, whichvisareaB, ii,p))
+
+        subplot(numel(visareas), numel(visareas), (b-1)*numel(visareas)+a)
+hold all
+plot(reshape(nanmean(ICasXREmatchnull{ii}(a,b,:,:),3),[],1), reshape(ICasXREmatch{ii}(a,b,:),[],1), 'o')
+xl = xlim;
+plot(xl, xl, 'r-')
+plot(xl, [1 1]/numel(traintrialtypes), 'k--')
+xlabel('null distribution mean')
+ylabel('actual match')
+p = signrank(reshape(nanmean(ICasXREmatchnull{ii}(a,b,:,:),3),[],1), reshape(ICasXREmatch{ii}(a,b,:),[],1));
+title(sprintf('%s vs %s I_C_%d as X_R_E_%d p=%.4f', whichvisareaA, whichvisareaB, ii,ii,p))        
+
+    end
+end
+
+
+% *V1 & LM match N=8 IC p=0.0078 IC as XRE p=0.0078
+% V1 & RL match N=11 IC p=0.4648 IC as XRE p=0.5195
+% #V1 & AL match N=10 IC p=0.0840 IC as XRE p=0.0840
+% V1 & PM match N=12 IC p=0.9697 IC as XRE p=0.9697
+% V1 & AM match N=11 IC p=0.2061 IC as XRE p=0.2061
+% LM & RL match N=7 IC p=0.1562 IC as XRE p=0.2188
+% LM & AL match N=6 IC p=0.5625 IC as XRE p=0.4375
+% LM & PM match N=8 IC p=0.6406 IC as XRE p=0.6406
+% LM & AM match N=7 IC p=0.2188 IC as XRE p=0.2969
+% RL & AL match N=9 IC p=0.2031 IC as XRE p=0.2031
+% *RL & PM match N=11 IC p=0.0186 IC as XRE p=0.0186
+% *RL & AM match N=10 IC p=0.0371 IC as XRE p=0.0371
+% AL & PM match N=10 IC p=0.6250 IC as XRE p=0.5566
+% AL & AM match N=9 IC p=0.2500 IC as XRE p=0.2500
+% PM & AM match N=11 IC p=0.4648 IC as XRE p=0.4648
+
+% CONCLUSION: ASSESSED WHETHER IC->XRE INFERENCE IS CORRELATED BETWEEN AREAS (focus on V1 & LM, V1 & AL)
+% within-session statistics: match percent is not significantly different shuffled distribution
+% across-session statistics: match is significantly higher than chance across sessions
+% despite being significant across sessions, the difference between actual
+% match and chance match is only very slightly different
+

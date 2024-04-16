@@ -53,7 +53,7 @@ for ises = 1:Nsessions
     testtrialstt = SVMtrainICRCcumpsthagg(ises).VISp.trialorder(ttindsordered);
     for a = 1:numel(visareas)
         whichvisarea = visareas{a};
-        if isempty(SVMtrainICRCcumpsthagg(ises).(whichvisarea))
+        if ~isempty(SVMtrainICRCcumpsthagg(ises).(whichvisarea))
             continue
         end
         finallabel = squeeze(SVMtrainICRCcumpsthagg(ises).(whichvisarea).label(end,:,:));
@@ -85,7 +85,7 @@ for ises = 1:Nsessions
 
     for a = 1:numel(visareas)
         whichvisarea = visareas{a};
-        if isempty(SVMtrainICRCcumpsthagg(ises).(whichvisarea))
+        if ~isempty(SVMtrainICRCcumpsthagg(ises).(whichvisarea))
             continue
         end
         tempts = testscorecumpsthagg(ises).(whichvisarea);
@@ -95,7 +95,7 @@ for ises = 1:Nsessions
     milestonesvec = [0.25; 0.50; 0.75];
     for a = 1:numel(visareas)
         whichvisarea = visareas{a};
-        if isempty(SVMtrainICRCcumpsthagg(ises).(whichvisarea))
+        if ~isempty(SVMtrainICRCcumpsthagg(ises).(whichvisarea))
             continue
         end
         tempnorm = normtestscorecumpsthagg(ises).(whichvisarea);
@@ -120,6 +120,10 @@ end
 
 save([pathsv 'SVMcumpsth' num2str(Twin) 'ms_', svmdesc '_' neuopt 'agg.mat'], 'SVMtrainICRCcumpsthagg', ...
     'testlabelfinalagg', 'testscorecumpsthagg', 'normtestscorecumpsthagg', 'Tmilestonesagg', '-v7.3')
+
+%%
+load('G:\My Drive\RESEARCH\ICexpts_revision23\openscope_HR_SVMtrainICRC_zscore_agg.mat', 'Nneuronsperarea')
+discardbelowNneurons = 50;
 
 %% check correspondence between SVMall and final timepoint of SVMcumpsthall
 SVMcumpsthall = SVMtrainICRCcumpsthagg(ises);
@@ -231,7 +235,7 @@ for itt = 1:numel(traintrialtypes)
     title(traintrialtypes(itt))
 end
 
-% COMPARE DYNAMICS OF TWO PAREAS TRIAL-BY-TRIAL: test trials, when both areas had the *correct* prediction
+%% COMPARE DYNAMICS OF TWO PAREAS TRIAL-BY-TRIAL: test trials, when both areas had the *correct* prediction
 % find the first timepoint at which normtestscorecumpsth crosses
 % 0.25, 0.5, 0.75 (called T25, T50, T75 respsectively)
 % divide into 6 trial types
@@ -257,7 +261,8 @@ for ab = 1:2
     ABfield = [whichvisareaA '_' whichvisareaB];
     comparedynamicsprob.(ABfield) = zeros(numel(traintrialtypes), length(dynamicslabels), Nsessions);
     for ises = 1:Nsessions
-        if isempty(Tmilestonesagg(ises).(whichvisareaA)) || isempty(Tmilestonesagg(ises).(whichvisareaB))
+        a = find(strcmp(visareas, whichvisareaA)); b = find(strcmp(visareas, whichvisareaB));
+        if Nneuronsperarea(ises,a)<discardbelowNneurons || Nneuronsperarea(ises,b)<discardbelowNneurons
             comparedynamicsprob.(ABfield)(:,:,ises) = NaN;
             continue
         end
@@ -317,11 +322,170 @@ end
 end
 colormap redblue
 
-% compare ramp time: longer means slower
+%% compare ramp time: longer means slower
 % calculate AUROC for rampA vs rampB for each session, then see if the
 % distribution is significantly different from 0.5 across sessions
+comparisonmetrics = {'Ntrials', 'zscore', 'Zwsr', 'TSwsr', 'CohenD', 'Zmww', 'TSmww', 'AUC'};
+comparisonvectors = {'rampAB', 'T50AB'};
+for v = 1:numel(comparisonvectors)
+    vec2compare = comparisonvectors{v};
+    tempAB = struct();
+    for ab = 1:2
+        switch ab
+            case 1
+                whichvisareaA = 'VISp';
+                whichvisareaB = 'VISl';
+            case 2
+                whichvisareaA = 'VISp';
+                whichvisareaB = 'VISal';
+            otherwise
+                error('specify whichvisareaA and whichvisareaB')
+        end
+        ABfield = [whichvisareaA '_' whichvisareaB];
+        tic
+        for imet = 1:numel(comparisonmetrics)
+            tempAB.(ABfield).(comparisonmetrics{imet}) = NaN(numel(traintrialtypes), Nsessions);
+        end
+        for ises = 1:Nsessions
+            a = find(strcmp(visareas, whichvisareaA)); b = find(strcmp(visareas, whichvisareaB));
+            if Nneuronsperarea(ises,a)<discardbelowNneurons || Nneuronsperarea(ises,b)<discardbelowNneurons
+                continue
+            end
+            switch vec2compare
+                case 'rampAB'
+                    vecA = Tmilestonesagg(ises).(whichvisareaA)(3,:)-Tmilestonesagg(ises).(whichvisareaA)(1,:);
+                    vecB = Tmilestonesagg(ises).(whichvisareaB)(3,:)-Tmilestonesagg(ises).(whichvisareaB)(1,:);
+                case 'T50AB'
+                    vecA = Tmilestonesagg(ises).(whichvisareaA)(2,:);
+                    vecB = Tmilestonesagg(ises).(whichvisareaB)(2,:);
+                otherwise
+                    error([vec2compare ' not recognized'])
+            end
+
+            for itt = 1:numel(traintrialtypes)
+                trialsoind = find( testtrialstt==traintrialtypes(itt) & ...
+                    testlabelfinalagg(ises).(whichvisareaA)==traintrialtypes(itt) & testlabelfinalagg(ises).(whichvisareaB)==traintrialtypes(itt) );
+                [pwsr,tblwsr,statswsr] = signrank(vecA(trialsoind), vecB(trialsoind), 'method', 'approximate');
+                zscore = mean(vecA(trialsoind)-vecB(trialsoind))/std(vecA(trialsoind)-vecB(trialsoind));
+
+                [pmww,tblmww,statsmww] = ranksum(vecA(trialsoind), vecB(trialsoind));
+                [~,~,~,AUC] = perfcurve([ones(size(trialsoind)) zeros(size(trialsoind))], [vecA(trialsoind), vecB(trialsoind)], '1');
+                stdpooled = sqrt( ( std(vecA(trialsoind))^2+std(vecB(trialsoind))^2 )/2 );
+                CohenD = mean(vecA(trialsoind)-vecB(trialsoind))/stdpooled;
+
+                tempAB.(ABfield).Ntrials(itt,ises) = numel(trialsoind);
+                tempAB.(ABfield).zscore(itt,ises) = zscore;
+                tempAB.(ABfield).TSwsr(itt,ises) = statswsr.signedrank;
+                tempAB.(ABfield).Zwsr(itt,ises) = statswsr.zval;
+
+                tempAB.(ABfield).CohenD(itt,ises) = CohenD;
+                tempAB.(ABfield).TSmww(itt,ises) = statsmww.ranksum;
+                tempAB.(ABfield).Zmww(itt,ises) = statsmww.zval;
+                tempAB.(ABfield).AUC(itt,ises) = AUC;
+            end
+        end
+        toc
+    end
+    switch vec2compare
+        case 'rampAB'
+            rampAB = tempAB;
+        case 'T50AB'
+            T50AB = tempAB;
+        otherwise
+            error([vec2compare ' not recognized'])
+    end
+end
+
+vec2compare = 'rampAB';
+compmetric = 'Zwsr';
+switch vec2compare
+    case 'rampAB'
+        tempAB = rampAB;
+    case 'T50AB'
+        tempAB = T50AB;
+    otherwise
+        error([vec2compare ' not recognized'])
+end
+for itt = 1:4
+    fprintf('%s Trial %d\n', vec2compare, traintrialtypes(itt))
+    for ab = 1:2
+        switch ab
+            case 1
+                whichvisareaA = 'VISp';
+                whichvisareaB = 'VISl';
+            case 2
+                whichvisareaA = 'VISp';
+                whichvisareaB = 'VISal';
+            otherwise
+                error('specify whichvisareaA and whichvisareaB')
+        end
+        ABfield = [whichvisareaA '_' whichvisareaB];
+        switch compmetric
+            case 'z-score'
+                tempvec = tempAB.(ABfield).zscore(itt,:);
+            case 'Znorm'
+                tempvec = tempAB.(ABfield).Zwsr(itt,:)./sqrt( tempAB.(ABfield).Ntrials(itt,:) );
+            case 'Zwsr'
+                tempvec = tempAB.(ABfield).Zwsr(itt,:);
+            otherwise
+                error([compmetric ' not recognized'])
+        end
+        p = signrank(tempvec,0);
+        pright = signrank(tempvec,0, 'tail', 'right');
+        pleft = signrank(tempvec,0, 'tail', 'left');
+        fprintf('%s vs %s N=%d %s %.2f (%.2f~%.2f) (p=%.4f, pright=%.4f, pleft=%.4f)\n', whichvisareaA,whichvisareaB, ...
+            nnz(~isnan(tempvec)), compmetric, prctile(tempvec,50), prctile(tempvec,25), prctile(tempvec,75), p, pright, pleft)
+    end
+end
+
+figure
+histogram(rampAB.(ABfield).zscore(itt,:))
+
+n = rampAB.(ABfield).Ntrials;
+figure; plot(rampAB.(ABfield).AUC, (rampAB.(ABfield).TSmww -n.*(n+1)/2)./(n.^2), 'o') % exact match
+figure; plot(rampAB.(ABfield).AUC, rampAB.(ABfield).Zmww, 'o') 
+corr(rampAB.(ABfield).AUC(:), rampAB.(ABfield).Zmww(:), 'rows','complete') % 0.9786
+figure; plot(rampAB.(ABfield).AUC, rampAB.(ABfield).CohenD, 'o') 
+corr(rampAB.(ABfield).AUC(:), rampAB.(ABfield).CohenD(:), 'rows','complete') % 0.9351
+
+figure; plot(rampAB.(ABfield).TSmww, rampAB.(ABfield).TSwsr, 'o')
+corr( reshape(rampAB.(ABfield).TSmww,[],1), reshape(rampAB.(ABfield).TSwsr,[],1), 'rows','complete') % 0.9351
+figure; plot(rampAB.(ABfield).Zmww, rampAB.(ABfield).Zwsr, 'o') 
+corr( reshape(rampAB.(ABfield).Zmww,[],1), reshape(rampAB.(ABfield).Zwsr,[],1), 'rows','complete') % 0.9885
+
+figure; plot(rampAB.(ABfield).zscore, rampAB.(ABfield).Zwsr, 'o') 
+corr( reshape(rampAB.(ABfield).zscore,[],1), reshape(rampAB.(ABfield).Zwsr,[],1), 'rows','complete') % 0.9706
+figure; plot(rampAB.(ABfield).zscore, rampAB.(ABfield).Zwsr./sqrt(n), 'o')
+corr( reshape(rampAB.(ABfield).zscore,[],1), reshape(rampAB.(ABfield).Zwsr./sqrt(n),[],1), 'rows','complete') % 0.9892
+
+figure; plot(rampAB.(ABfield).zscore, rampAB.(ABfield).TSwsr, 'o') % not correlated
+corr( reshape(rampAB.(ABfield).zscore,[],1), reshape( rampAB.(ABfield).TSwsr,[],1), 'rows','complete') % 0.5393
+figure; plot(rampAB.(ABfield).zscore, (rampAB.(ABfield).TSwsr -n.*(n+1)/2)./(n.^2), 'o')
+corr( reshape(rampAB.(ABfield).zscore,[],1), reshape( (rampAB.(ABfield).TSwsr -n.*(n+1)/2)./(n.^2),[],1), 'rows','complete') % 0.9869
+
+corr(reshape(rampAB.(ABfield).AUC,[],1), reshape(rampAB.(ABfield).Zwsr,[],1), 'rows','complete') % 0.9785
+
+figure; plot(rampAB.(ABfield).AUC, rampAB.(ABfield).Zwsr./sqrt(n), 'o') 
+corr(reshape(rampAB.(ABfield).AUC,[],1), reshape(rampAB.(ABfield).Zwsr./sqrt(n),[],1), 'rows','complete') % 0.9886
+figure; plot(rampAB.(ABfield).zscore, rampAB.(ABfield).CohenD, 'o') 
+corr(rampAB.(ABfield).zscore(:), rampAB.(ABfield).CohenD(:), 'rows','complete') % 0.9969
+
+figure; plot(rampAB.(ABfield).Zwsr, rampAB.(ABfield).TSwsr, 'o') % correlated
+
+% % relationship between AUROC (AUC) and ranksum test statistic (TSmww)
+% tempauc = SP_gratings(d).(whichR).(preds{ii}).AUC{1};
+% n0 = SP_gratings(d).(whichR).(preds{ii}).Ntrials0{1};
+% n1 = SP_gratings(d).(whichR).(preds{ii}).Ntrials1{1};
+% tempu = SP_gratings(d).(whichR).(preds{ii}).TSmww{1};
+% if max(abs((tempu-n1.*(n1+1)/2)-(tempauc.*n0.*n1)))>2^-32
+%     error('unexpected mismatch between perfcurve and ranksum results')
+% end
+
 rampA = Tmilestonesagg(ises).(whichvisareaA)(3,:)-Tmilestonesagg(ises).(whichvisareaA)(1,:);
 rampB = Tmilestonesagg(ises).(whichvisareaB)(3,:)-Tmilestonesagg(ises).(whichvisareaB)(1,:);
+itt = 4;
+trialsoind = find( testtrialstt==traintrialtypes(itt) & ...
+    testlabelfinalagg(ises).(whichvisareaA)==traintrialtypes(itt) & testlabelfinalagg(ises).(whichvisareaB)==traintrialtypes(itt) );
 figure; hold all
 plot(rampA(trialsoind), rampB(trialsoind), 'o')
 xl = xlim;
