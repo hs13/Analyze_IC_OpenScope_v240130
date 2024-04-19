@@ -8,7 +8,7 @@ nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
     ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
 Nsessions = numel(nwbsessions);
 
-gazedistthresh = 10;
+gazedistthresh = 20;
 
 % A-AM, B-PM, C-V1, D-LM, E-AL, F-RL
 probes = {'A', 'B', 'C', 'D', 'E', 'F'};
@@ -619,3 +619,6 @@ figure; histogram2(RFindclassic(neuoi), RFCI_fixedgazeall.RFindclassic(neuoi), '
 disp('match between CRF position for all trials vs fixed gaze trials')
 disp(mean(RFindclassic(neuoi)==RFCI_fixedgazeall.RFindclassic(neuoi)))
 
+%%
+copyfile('S:\OpenScopeData\00248_v240130\postprocessed\openscope_popavg_fixedgazeall_20pix.mat', 'G:\My Drive\RESEARCH\ICexpts_revision23\')
+copyfile('S:\OpenScopeData\00248_v240130\postprocessed\openscope_psthavg_fixedgazeall_20pix.mat', 'G:\My Drive\RESEARCH\ICexpts_revision23\')
