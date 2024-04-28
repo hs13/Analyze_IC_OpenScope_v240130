@@ -333,6 +333,12 @@ if ~isequal(floor(neupeakchall/1000), probeneuall-1)
     error('check probeneuall')
 end
 
+for ises = 1:Nsessions
+    if ~isequal(neuoindall(sesneuall==ises), (1:nnz(sesneuall==ises))')
+        error('check neuoindall')
+    end
+end
+
 %%
 save([datadir 'postprocessed\openscope_popavg_all.mat'], ...
     'nwbsessions', 'neuoindall', 'probeneuall', 'neulocall', 'neupeakchall', 'sesneuall', 'neuctxall', ...
