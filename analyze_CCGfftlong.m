@@ -1,3 +1,5 @@
+% PERHAPS CCG flank should have been calculated with jitter-corrected CCG?
+
 %{
 node strength can be calculated with:
 -CRF edge potential
@@ -168,4 +170,137 @@ for ises = ses2anal
     
     
     toc(sesclk)
+end
+
+%% match sessions between this dataset and v240130 and move corresponding sessions
+datadir = 'S:\OpenScopeData\00248_v240130\';
+nwbdir = dir(datadir);
+nwbsesv240130 = {nwbdir.name};
+nwbsesv240130 = nwbsesv240130(~contains(nwbsesv240130, 'Placeholder') & ...
+    ( contains(nwbsesv240130, 'sub-') | contains(nwbsesv240130, 'sub_') ));
+neulocaggv240130 = cell(size(nwbsesv240130));
+for ises = 1:numel(nwbsesv240130)
+    clearvars neuloc unit_peakch electrode_location electrode_id
+    pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed\' nwbsesv240130{ises} '\'];
+    load([pathpp 'info_electrodes.mat']) %'electrode_probeid', 'electrode_localid', 'electrode_id', 'electrode_location', '-v7.3')
+    load([pathpp 'info_units.mat']) %'unit_ids', 'unit_peakch', 'unit_times_idx', 'unit_wfdur') %'unit_times_data',
+    elecid = electrode_id+1;
+    revmapelecid = NaN(max(elecid),1);
+    revmapelecid(elecid) = 1:numel(elecid);
+    neuloc = electrode_location(revmapelecid(unit_peakch+1));
+    neulocaggv240130{ises} = neuloc;
+end
+
+datadir = 'S:\OpenScopeData\000248\';
+nwbdir = dir(datadir);
+nwbsesv0 = {nwbdir.name};
+nwbsesv0 = nwbsesv0(~contains(nwbsesv0, 'Placeholder') & ...
+    ( contains(nwbsesv0, 'sub-') | contains(nwbsesv0, 'sub_') ));
+neulocaggv0 = cell(size(nwbsesv0));
+for ises = 1:numel(nwbsesv0)
+    clearvars neuloc unit_peakch electrode_location electrode_id
+    pathpp = ['S:\OpenScopeData\000248\postprocessed\' nwbsesv0{ises} '\'];
+    load([pathpp 'info_electrodes.mat']) %'electrode_probeid', 'electrode_localid', 'electrode_id', 'electrode_location', '-v7.3')
+    load([pathpp 'info_units.mat']) %'unit_ids', 'unit_peakch', 'unit_times_idx', 'unit_wfdur') %'unit_times_data',
+    elecid = electrode_id+1;
+    revmapelecid = NaN(max(elecid),1);
+    revmapelecid(elecid) = 1:numel(elecid);
+    electrode_location = cellstr(electrode_location);
+    neuloc = electrode_location(revmapelecid(unit_peakch+1));
+    neulocaggv0{ises} = neuloc;
+end
+
+sesindsv240130 = zeros(size(nwbsesv240130));
+for ises = 1:numel(nwbsesv240130)
+    c = cellfun(@isequal, neulocaggv0, repmat(neulocaggv240130(ises),size(neulocaggv0)), 'UniformOutput',false);
+    sesv0ind = find(cat(1,c{:}));
+    if numel(sesv0ind)==1
+        sesindsv240130(ises) = sesv0ind;
+    else
+        warning('%d %s does not have a direct match with the old version', ises, nwbsesv240130{ises})
+    end
+end
+% Warning: 1 sub-619293 does not have a direct match with the old version 
+% Warning: 6 sub-625554 does not have a direct match with the old version 
+
+for ises = 1:numel(nwbsesv240130)
+    if sesindsv240130(ises)==0
+        warning('%d %s does not have a direct match with the old version', ises, nwbsesv240130{ises})
+        continue
+    end
+    pathccg = ['S:\OpenScopeData\000248\CCG\' nwbsesv0{sesindsv240130(ises)} filesep];
+    ccgfnv0 = [pathccg 'ctxCCGfft.mat'];
+    % save([pathsv 'ctxCCGfft.mat'], 'stlen', 'spkcntvec', 'neuctx', 'neulocctx', 'visarealabels', 'CCGtli_fft', 'ctxCCGfft', '-v7.3')
+    pathsv = ['S:\OpenScopeData\00248_v240130\CCG' filesep nwbsesv240130{ises} filesep];
+    mkdir(pathsv)
+    ccgfnv240130 = [pathsv 'ctxCCGfft.mat'];
+    copyfile(ccgfnv0, pathsv)
+end
+
+whos('-file', 'S:\OpenScopeData\00248_v240130\CCG\sub-619293\ctxCCGfft.mat')
+whos('-file', 'S:\OpenScopeData\00248_v240130\CCG\sub-637484\ctxCCGfft.mat')
+
+%% approximate ctxCCGsm0 from ctxCCGfft by averaging -12~12ms window
+load('S:\OpenScopeData\000248\CCG\sub_1175512783\ctxCCGsm0.mat')
+load('S:\OpenScopeData\000248\CCG\sub_1175512783\ctxCCGfft.mat')
+
+% note, high correlation
+figure; hold all
+plot(ctxCCGsm0, mean(ctxCCGfft(:,:,CCGtli_fft>=-12 & CCGtli_fft<=12),3), 'o')
+xl=xlim;
+plot(xl,xl,'k-')
+
+%% NOTE ERROR IN CALCULATING ctxCCGfft -- when row>column, CCG vector should be flipped!!!
+load('S:\OpenScopeData\000248\CCG\sub_1175512783\ctxCCGfft.mat')
+load('S:\OpenScopeData\000248\CCG\sub_1175512783\ctxCCG.mat')
+
+isequaln(ctxCCG, ctxCCGfft(:,:,ismember(CCGtli_fft, CCGtli))) % not true
+
+r=107; c= 121; % test for arbitrary pair
+isequal(ctxCCG(r,c,:), flip(ctxCCG(c,r,:))) % true
+
+N = size(ctxCCGfft,1);
+ctxCCGfftnew = ctxCCGfft;
+tic
+for t = 1:length(CCGtli_fft)
+    tempCCG = ctxCCGfft(:,:,t);
+    tempCCGflip = ctxCCGfft(:,:,length(CCGtli_fft)+1-t);
+    tempCCG(tril(true(N),-1)) = tempCCGflip(tril(true(N),-1));
+    ctxCCGfftnew(:,:,t) = tempCCG;
+end
+toc
+
+isequaln(ctxCCG, ctxCCGfftnew(:,:,ismember(CCGtli_fft, CCGtli))) % true if not for floating point errors
+max(abs(ctxCCG - ctxCCGfftnew(:,:,ismember(CCGtli_fft, CCGtli))),[],'all')
+figure; hold all
+plot(reshape(ctxCCG,[],1), reshape(ctxCCGfftnew(:,:,ismember(CCGtli_fft, CCGtli)),[],1), '.')
+xl=xlim; plot(xl,xl,'k-')
+
+r=107; c= 121; % test for arbitrary pair
+isequal(ctxCCGfftnew(r,c,:), flip(ctxCCGfftnew(c,r,:))) % true
+
+figure; hold all
+plot(CCGtli_fft, squeeze(ctxCCGfftnew(r,c,:)), 'k-')
+plot(CCGtli, squeeze(ctxCCG(r,c,:)), 'r--')
+
+
+datadir = 'S:\OpenScopeData\00248_v240130\';
+nwbdir = dir(datadir);
+nwbsessions = {nwbdir.name};
+nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
+for ises = 1:numel(nwbsessions)
+    clearvars -except ises nwbsessions
+    tic
+    pathccg = ['S:\OpenScopeData\00248_v240130\CCG\' nwbsessions{ises} filesep];
+    load([pathccg 'ctxCCGfft.mat'])
+    N = size(ctxCCGfft,1);
+    ctxCCGfftnew = ctxCCGfft;
+    for t = 1:length(CCGtli_fft)
+        tempCCG = ctxCCGfft(:,:,t);
+        tempCCGflip = ctxCCGfft(:,:,length(CCGtli_fft)+1-t);
+        tempCCG(tril(true(N),-1)) = tempCCGflip(tril(true(N),-1));
+        ctxCCGfftnew(:,:,t) = tempCCG;
+    end
+    save([pathccg 'ctxCCGfftnew.mat'], 'stlen', 'spkcntvec', 'neuctx', 'neulocctx', 'visarealabels', 'CCGtli_fft', 'ctxCCGfftnew', '-v7.3')
+    toc
 end

@@ -215,12 +215,36 @@ save([pathsv 'SVMcumpsth' num2str(Twin) 'ms_', svmdesc '_' neuopt 'agg.mat'], 'S
     'RExinflabelfinalagg', 'RExinfscorecumpsthagg', 'RExinfnormscorecumpsthagg', 'RExinfTmilestonesagg', '-v7.3')
 
 %%
+addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
+load("S:\OpenScopeData\00248_v240130\SVM_trainREx_selectareas\SVMcumpsth5ms_trainREx_RSagg.mat")
 load('G:\My Drive\RESEARCH\ICexpts_revision23\openscope_HR_SVMtrainREx_zscore_agg.mat', 'Nneuronsperarea')
+
+datadir = 'S:\OpenScopeData\00248_v240130\';
+nwbdir = dir(datadir);
+nwbsessions = {nwbdir.name};
+nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
+Nsessions = numel(nwbsessions);
+
+neuopt = 'RS';
+svmdesc = 'trainREx';
+preproc = 'zscore'; % '' is z-score train trials, '_zscoreall', or '_meancenter'
+whichSVMkernel = 'Linear';
+
+whichICblock = 'ICwcfg1';
+whichblock = [whichICblock '_presentations'];
+visareas = {'VISp', 'VISl', 'VISrl', 'VISal', 'VISpm', 'VISam'};
+pathsv = ['S:\OpenScopeData\00248_v240130\SVM_' svmdesc '_selectareas\'];
+traintrialtypes = SVMtrainRExcumpsthagg(1).VISp.traintrialtypes;
+ICtrialtypes = [106, 111];
+
 discardbelowNneurons = 50;
+
 
 %% valid ramp trials: define based on spearman correlation between timepoints and scores
 % set an arbitrary threshold at 0.5 to determine validity.
 % alternatively, could use a more inclusive threshold value of 0
+cumpsthtl = SVMtrainRExcumpsthagg(1).VISp.psthbinTends;
+
 threshspear = 0.5;
 RExtestrhorampxtimeagg = struct();
 RExinfrhorampxtimeagg = struct();
@@ -256,6 +280,7 @@ plot(cumpsthtl, tempts(:,rhoampxtimevec>0.5), 'b-')
 plot(cumpsthtl, tempts(:,rhoampxtimevec<=0.5), 'r-')
 
 %% check correspondence between SVMall and final timepoint of SVMcumpsthall
+ises = 1;
 SVMcumpsthall = SVMtrainRExcumpsthagg(ises);
 pathsvm = [pathsv nwbsessions{ises} filesep];
 
@@ -732,6 +757,7 @@ for v = 1:numel(comparisonvectors)
             RExtestrampAB = tempAB;
             RExtestalldifframpAB = tempvecdiffAB;
         case 'T50AB'
+            RExtestT50AB = tempAB;
             RExtestalldiffT50AB = tempvecdiffAB;
         otherwise
             error([vec2compare ' not recognized'])

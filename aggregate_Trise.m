@@ -1,82 +1,83 @@
 % find the first spike timing that exceeds 97.5 percentile
-datadir = 'S:\OpenScopeData\00248_v240130\';
-nwbdir = dir(datadir);
-nwbsessions = {nwbdir.name};
-nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
-Nsessions = numel(nwbsessions);
-
-Twin = 5;
-probes = {'A', 'B', 'C', 'D', 'E', 'F'};
+drivepath = 'G:\My Drive\RESEARCH\ICexpts_revision23\';
 whichblock = 'ICwcfg1_presentations';
+fs=12;
+if exist([drivepath 'Trise5msbinsall.mat'], 'file')
+    load([drivepath 'openscope_popavg_all.mat'])
+    load([drivepath 'Trise5msbinsall.mat'])
+else
+    datadir = 'S:\OpenScopeData\00248_v240130\';
+    nwbdir = dir(datadir);
+    nwbsessions = {nwbdir.name};
+    nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
+    Nsessions = numel(nwbsessions);
 
-psthblankconvpeakagg = cell(numel(probes), Nsessions);
-psthblankconvTpeakagg = cell(numel(probes), Nsessions);
-blankmaxdrateagg = cell(numel(probes), Nsessions);
-blankTmaxriseagg = cell(numel(probes), Nsessions);
-% psthconvavgagg
-% psthconvprctagg
-psthconvglobprctagg = cell(numel(probes), Nsessions);
-psthconvavgpeakagg = cell(numel(probes), Nsessions);
-psthconvavgTpeakagg = cell(numel(probes), Nsessions);
-psthconvavgpeakprctagg = cell(numel(probes), Nsessions);
-maxdrateagg = cell(numel(probes), Nsessions);
-Tmaxriseagg = cell(numel(probes), Nsessions);
-maxdrateprctagg = cell(numel(probes), Nsessions);
+    Twin = 5;
+    probes = {'A', 'B', 'C', 'D', 'E', 'F'};
 
-for ises = 1:Nsessions
-    fprintf('Session %d/%d %s\n', ises, Nsessions, nwbsessions{ises} )
-    sesclk = tic;
-    pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
+    psthblankconvpeakagg = cell(numel(probes), Nsessions);
+    psthblankconvTpeakagg = cell(numel(probes), Nsessions);
+    blankmaxdrateagg = cell(numel(probes), Nsessions);
+    blankTmaxriseagg = cell(numel(probes), Nsessions);
+    % psthconvavgagg
+    % psthconvprctagg
+    psthconvglobprctagg = cell(numel(probes), Nsessions);
+    psthconvavgpeakagg = cell(numel(probes), Nsessions);
+    psthconvavgTpeakagg = cell(numel(probes), Nsessions);
+    psthconvavgpeakprctagg = cell(numel(probes), Nsessions);
+    maxdrateagg = cell(numel(probes), Nsessions);
+    Tmaxriseagg = cell(numel(probes), Nsessions);
+    maxdrateprctagg = cell(numel(probes), Nsessions);
+
+    for ises = 1:Nsessions
+        fprintf('Session %d/%d %s\n', ises, Nsessions, nwbsessions{ises} )
+        sesclk = tic;
+        pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
 
 
-    for iprobe = 1:numel(probes)
-        Trisefn = [pathpp 'Trise' num2str(Twin) 'msbins_probe' probes{iprobe} '.mat'];
-        load(Trisefn)
+        for iprobe = 1:numel(probes)
+            Trisefn = [pathpp 'Trise' num2str(Twin) 'msbins_probe' probes{iprobe} '.mat'];
+            load(Trisefn)
 
-psthblankconvpeakagg{iprobe, ises} = psthblankconvpeak;
-psthblankconvTpeakagg{iprobe, ises} = psthblankconvTpeak;
-blankmaxdrateagg{iprobe, ises} = blankmaxdrate;
-blankTmaxriseagg{iprobe, ises} = blankTmaxrise;
-% psthconvavgagg
-% psthconvprctagg
-% psthconvglobprctagg
-psthconvavgpeakagg{iprobe, ises} = psthconvavgpeak;
-psthconvavgTpeakagg{iprobe, ises} = psthconvavgTpeak;
-psthconvavgpeakprctagg{iprobe, ises} = psthconvavgpeakprct;
-maxdrateagg{iprobe, ises} = maxdrate;
-Tmaxriseagg{iprobe, ises} = Tmaxrise;
-maxdrateprctagg{iprobe, ises} = maxdrateprct;
+            psthblankconvpeakagg{iprobe, ises} = psthblankconvpeak;
+            psthblankconvTpeakagg{iprobe, ises} = psthblankconvTpeak;
+            blankmaxdrateagg{iprobe, ises} = blankmaxdrate;
+            blankTmaxriseagg{iprobe, ises} = blankTmaxrise;
+            % psthconvavgagg
+            % psthconvprctagg
+            % psthconvglobprctagg
+            psthconvavgpeakagg{iprobe, ises} = psthconvavgpeak;
+            psthconvavgTpeakagg{iprobe, ises} = psthconvavgTpeak;
+            psthconvavgpeakprctagg{iprobe, ises} = psthconvavgpeakprct;
+            maxdrateagg{iprobe, ises} = maxdrate;
+            Tmaxriseagg{iprobe, ises} = Tmaxrise;
+            maxdrateprctagg{iprobe, ises} = maxdrateprct;
 
+        end
+        toc(sesclk)
     end
-    toc(sesclk)
+
+    psthblankconvpeakall = cat(2, psthblankconvpeakagg{:});
+    psthblankconvTpeakall = cat(2, psthblankconvTpeakagg{:});
+    blankmaxdrateall = cat(2, blankmaxdrateagg{:});
+    blankTmaxriseall = cat(2, blankTmaxriseagg{:});
+    % psthconvavgagg
+    % psthconvprctagg
+    % psthconvglobprctagg
+    psthconvavgpeakall = cat(2, psthconvavgpeakagg{:});
+    psthconvavgTpeakall = cat(2, psthconvavgTpeakagg{:});
+    psthconvavgpeakprctall = cat(2, psthconvavgpeakprctagg{:});
+    maxdrateall = cat(2, maxdrateagg{:});
+    Tmaxriseall = cat(2, Tmaxriseagg{:});
+    maxdrateprctall = cat(2, maxdrateprctagg{:});
+
+    save([datadir 'Trise' num2str(Twin) 'msbinsall.mat'], 'vistrialrep', 'vistrialtypes', ...
+        'psthblankconvpeakall', 'psthblankconvTpeakall', 'blankmaxdrateall', 'blankTmaxriseall', ...
+        'psthconvavgpeakall', 'psthconvavgTpeakall', 'psthconvavgpeakprctall', ...
+        'maxdrateall', 'Tmaxriseall', 'maxdrateprctall')
+    copyfile([datadir 'Trise' num2str(Twin) 'msbinsall.mat'], 'G:\My Drive\RESEARCH\ICexpts_revision23\')
 end
 
-psthblankconvpeakall = cat(2, psthblankconvpeakagg{:});
-psthblankconvTpeakall = cat(2, psthblankconvTpeakagg{:});
-blankmaxdrateall = cat(2, blankmaxdrateagg{:});
-blankTmaxriseall = cat(2, blankTmaxriseagg{:});
-% psthconvavgagg
-% psthconvprctagg
-% psthconvglobprctagg
-psthconvavgpeakall = cat(2, psthconvavgpeakagg{:});
-psthconvavgTpeakall = cat(2, psthconvavgTpeakagg{:});
-psthconvavgpeakprctall = cat(2, psthconvavgpeakprctagg{:});
-maxdrateall = cat(2, maxdrateagg{:});
-Tmaxriseall = cat(2, Tmaxriseagg{:});
-maxdrateprctall = cat(2, maxdrateprctagg{:});
-
-save([datadir 'Trise' num2str(Twin) 'msbinsall.mat'], 'vistrialrep', 'vistrialtypes', ...
-    'psthblankconvpeakall', 'psthblankconvTpeakall', 'blankmaxdrateall', 'blankTmaxriseall', ...
-    'psthconvavgpeakall', 'psthconvavgTpeakall', 'psthconvavgpeakprctall', ...
-    'maxdrateall', 'Tmaxriseall', 'maxdrateprctall')
-copyfile([datadir 'Trise' num2str(Twin) 'msbinsall.mat'], 'G:\My Drive\RESEARCH\ICexpts_revision23\')
-
-%%
-drivepath = 'G:\My Drive\RESEARCH\ICexpts_revision23\';
-load([drivepath 'openscope_popavg_all.mat'])
-load([drivepath 'Trise' num2str(Twin) 'msbinsall.mat'])
-
-%% V1 vs LM or V1 vs AL
 ICtrialtypes = [0 101 105 106 107 109 110 111 506 511 1105 1109 1201 1299 ...
     1301 1302 1303 1304 1305 1306 1307 1308];
 ICtrialtypedescription = {'Blank', 'X', 'T_C_1', 'I_C_1', 'L_C_1', 'T_C_2', 'L_C_2', 'I_C_2', ...
@@ -94,13 +95,14 @@ visareas = {'VISp', 'VISl', 'VISrl', 'VISal', 'VISpm', 'VISam'};
 neuvis = zeros(size(neulocall));
 for a = 1:numel(visareas)
     if strcmp(visareas{a}, 'VISp')
-neuinarea = contains(neulocall, 'VISp') & ~contains(neulocall, 'VISpm');        
+        neuinarea = contains(neulocall, 'VISp') & ~contains(neulocall, 'VISpm');
     else
-neuinarea = contains(neulocall, visareas{a});        
+        neuinarea = contains(neulocall, visareas{a});
     end
     neuvis(neuinarea) = a;
 end
 
+%% V1 vs LM or V1 vs AL
 validTpeak = psthconvavgpeakprctall>0.975;
 
 typi = ICtrialtypes==1105;
@@ -465,8 +467,9 @@ end
 %% for each trial type, compare neuron groups
 % 'visareas', 'V1LMAL', 'visareas_ctrRF', 'V1LMAL_ctrRF', 'V1ctrRF_V1onsegRF_LMctrRF_ALctrRF', 'V1ICenc_V1segresp_LMICenc_ALICenc'
 whichT = 'Tmaxrise';
-whichneugroup = 'V1ICenc_V1segresp_LMICenc'; % V1LM, V1ctrRF_V1onsegRF_LMctrRF, 
-% V1ICenc_V1segresp, V1ICenc_V1segresp_LMICenc, V1ICenc_V1segresp_LMICenc_ALICenc all not significant
+whichneugroup = 'visareas';
+% whichneugroup = 'V1ICenc_V1segresp_LMICenc'; % V1LM, V1ctrRF_V1onsegRF_LMctrRF, 
+% % V1ICenc_V1segresp, V1ICenc_V1segresp_LMICenc, V1ICenc_V1segresp_LMICenc_ALICenc all not significant
 
 switch whichT
     case 'Tpeak'
@@ -476,7 +479,7 @@ ylab = 'Peak Time (ms)';
     case 'Tmaxrise'
 validT = maxdrateprctall>0.975;
 Tmat = Tmaxriseall;
-ylab = 'Rise Time (ms)';
+ylab = 'Max Rise Time (ms)';
 end
 
 yl = [0 250];
@@ -677,7 +680,7 @@ neuoi = validT(typi,:)' & neuingroup;
 C = multcompare(stats,'display','off');
 indsigcomp = find(C(:,end)<0.05);
 
-figure('Position', [100+240*(t-1) 100 240 320])
+figure('Position', [100+240*(t-1) 100 270 270])
 hold all
 b=boxchart(neurongroups(neuoi), Tmat(typi,neuoi), 'notch' , 'on', 'linewidth', 2);
 % b.JitterOutliers = 'on';
@@ -694,17 +697,16 @@ set(gca, 'XTick', 1:numel(neurogrouplabels), 'XTickLabel', neurogrouplabels, 'Fo
 ylim([yl(1) yl(2)+0.02*range(yl)*numel(indsigcomp)])
 xlim([0.5 numel(neurogrouplabels)+0.5])
 ylabel(ylab, 'FontSize', fs)
-% title([ICtrialtypedescription{typi} ' Trials'], 'FontSize', fs)
-title(sprintf('%s Trials p=%.4f', ICtrialtypedescription{typi}, p), 'FontSize', fs)
+title([ICtrialtypedescription{typi} ' Trials'], 'FontSize', fs)
+% title(sprintf('%s Trials p=%.4f', ICtrialtypedescription{typi}, p), 'FontSize', fs)
 end
 
 %% pool IC/TRE/XRE trial types
 % 'visareas', 'V1LMAL', 'visareas_ctrRF', 'V1LMAL_ctrRF', 'V1ctrRF_V1onsegRF_LMctrRF_ALctrRF', 'V1ICenc_V1segresp_LMICenc_ALICenc'
 whichT = 'Tmaxrise';
-whichneugroup = 'V1LM'; % V1LM, V1ctrRF_V1onsegRF_LMctrRF, 
+whichneugroup = 'V1LM'; % V1LM, V1ICenc_V1segresp_LMICenc, V1ctrRF_V1onsegRF_LMctrRF, 
 % V1ICenc_V1segresp, V1ICenc_V1segresp_LMICenc, V1ICenc_V1segresp_LMICenc_ALICenc all not significant
-poolopt = 'poolIC';
-fw=240; fh=320; xtr = 30;
+xtr = 30;
 
 switch whichT
     case 'Tpeak'
@@ -714,9 +716,13 @@ ylab = 'Peak Time (ms)';
     case 'Tmaxrise'
 validT = maxdrateprctall>0.975;
 Tmat = Tmaxriseall;
-ylab = 'Rise Time (ms)';
+ylab = 'Max Rise Time (ms)';
 end
 
+% poolopt = 'poolTRE';
+pooloptions = {'poolIC', 'poolTRE';};
+for iopt = 1:numel(pooloptions)
+poolopt = pooloptions{iopt};
 
 yl = [0 200];
 switch poolopt
@@ -737,6 +743,7 @@ switch whichneugroup
         neurogrouplabels = {'V1', 'LM', 'RL', 'AL', 'PM', 'AM'};
         neuingroup = neuRS & neuvis>0;
         neurongroups = neuvis;
+        fw=200; fh=270; xtr = 0;
     case 'V1LMAL'
         neurogrouplabels = {'V1', 'LM', 'AL'};
         neuingroup = neuRS & ismember(neuvis, find(ismember(visareas, {'VISp', 'VISl', 'VISal'})));
@@ -751,8 +758,7 @@ switch whichneugroup
         for g = 1:numel(neurogrouplabels)
             neurongroups(neuvis==find(strcmp(visctx,neurogrouplabels{g})))=g;
         end
-        % fw=180; fh=240;
-        xtr = 0;
+        fw=200; fh=270; xtr = 0;
     case 'visareas_ctrRF'
         neurogrouplabels = {'V1', 'LM', 'RL', 'AL', 'PM', 'AM'};
         neuingroup = neuRS & neuvis>0 & RFCIall.pRFclassic<0.05 & RFCIall.RFindclassic==1;
@@ -795,7 +801,7 @@ switch whichneugroup
             neurongroups(tempneu)=g;
         end
         neuingroup = neurongroups>0;
-
+fw=200; fh=318; 
     case 'V1ICenc_V1segresp_LMICenc'
         neurogrouplabels = {'V1 IC-enc.', 'V1 seg.-resp.', 'LM IC-enc.'};
 
@@ -822,6 +828,7 @@ switch whichneugroup
             neurongroups(tempneu)=g;
         end
         neuingroup = neurongroups>0;
+fw=200; fh=312; 
 end
 neuoi = validT(typi,:)' & neuingroup;
 Tpool = [Tpool Tmat(typi,neuoi)];
@@ -847,22 +854,28 @@ for c = 1:numel(indsigcomp)
 end
 text(numel(neurogrouplabels)+0.5, yl(1), sprintf('p=%.4f',p), 'FontSize', fs, 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom')
 set(gca, 'XTick', 1:numel(neurogrouplabels), 'XTickLabel', neurogrouplabels, 'XTickLabelRotation', xtr, 'FontSize', fs)
-ylim([yl(1) yl(2)+0.02*range(yl)*numel(indsigcomp)])
-xlim([0.5 numel(neurogrouplabels)+0.5])
 ylabel(ylab, 'FontSize', fs)
+
 switch poolopt
     case 'poolIC'
-title(sprintf('I_C Trials p=%.4f', p), 'FontSize', fs, 'FontWeight', 'normal')
+title(sprintf('I_C Trials p=%.4f', p), 'FontSize', fs);%, 'FontWeight', 'normal')
     case 'poolTRE'
-title(sprintf('T_R_E Trials p=%.4f', p), 'FontSize', fs, 'FontWeight', 'normal')
+title(sprintf('T_R_E Trials p=%.4f', p), 'FontSize', fs);%, 'FontWeight', 'normal')
     case 'poolXRE'
-title(sprintf('X_R_E Trials p=%.4f', p), 'FontSize', fs, 'FontWeight', 'normal')
+title(sprintf('X_R_E Trials p=%.4f', p), 'FontSize', fs);%, 'FontWeight', 'normal')
 end
 switch poolopt
     case 'poolIC'
 title('I_C Trials')
+if strcmp(whichneugroup, 'V1ICenc_V1segresp_LMICenc')
+    yl=[0 400];
+end
     case 'poolTRE'
 title('T_R_E Trials')
     case 'poolXRE'
 title('X_R_E Trials')
+end
+xlim([0.5 numel(neurogrouplabels)+0.5])
+ylim([yl(1) yl(2)+0.02*range(yl)*numel(indsigcomp)])
+
 end

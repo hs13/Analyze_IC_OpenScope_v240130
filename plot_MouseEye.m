@@ -29,10 +29,13 @@ eyecamframerate = 60;
 ICtrialtypes = [0 101 105 106 107 109 110 111 506 511 1105 1109 1201 1299 ...
     1301 1302 1303 1304 1305 1306 1307 1308];
 whichblock = 'ICwcfg1_presentations';
+tempsplt = strsplit(whichblock,'_');
+whichICblock = tempsplt{1};
 
 ises=2; pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
 load([pathpp 'trialpupil.mat'], 'trackeyetli')
 
+validfgsessions = true(Nsessions,1);
 ttpupilposx = cell(numel(ICtrialtypes),Nsessions);
 ttpupilposy = cell(numel(ICtrialtypes),Nsessions);
 ttpupilareaz = cell(numel(ICtrialtypes),Nsessions);
@@ -40,6 +43,7 @@ trialpupilareazavg = NaN(length(trackeyetli), numel(ICtrialtypes), Nsessions);
 for ises = 1:Nsessions
     pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
     if ~exist([pathpp 'trackmouseeye.mat'], 'file')
+        validfgsessions(ises) = false;
         continue
     end
     load([pathpp 'postprocessed.mat'], 'vis')
@@ -61,9 +65,14 @@ for ises = 1:Nsessions
         ttpupilposy{t,ises} = tempy;
 
         ttpupilareaz{t,ises} = (trialpupilarea.(whichblock)(trialsoi,tloi)-pupareamean)/pupareastd;
-        trialpupilareazavg(:,t,ises) = mean(trialpupilarea.(whichblock)(trialsoi,:),1);
+        trialpupilareazavg(:,t,ises) = nanmean(trialpupilarea.(whichblock)(trialsoi,:),1);
     end
 end
+valfgses = find(validfgsessions);
+
+save(['G:\My Drive\RESEARCH\ICexpts_revision23\openscope_pupilarea_', whichICblock, '.mat'], ...
+    'pixperdeg', 'eyecamframerate', 'ICtrialtypes', 'valfgses', 'trackeyetli', 'tloi', ...
+    'ttpupilposx', 'ttpupilposy', 'ttpupilareaz', 'trialpupilareazavg')
 
 %% 2d histogram each session each trialtype
 tt2p = [106 107 110 111 506 511];
@@ -235,18 +244,15 @@ tt2p = [106 107 110 111 506 511];
 ttdesc = {'I_C_1', 'L_C_1', 'L_C_2', 'I_C_2', 'I_R_E_1', 'I_R_E_2'};
 ttcol = [0 .4 0; .5 0.25 0; 1 0.5 0; 0 1 0; 0 0 0.4; 0 0 1];
 
-figure; hold all
+tt2pinds = zeros(size(tt2p));
 for s = 1:numel(tt2p)
-    typi = ICtrialtypes==tt2p(s);
-% plot(trackeyetl, squeeze(trialpupilareazavg(:,typi,:)) )
-plot(trackeyetl, nanmean(trialpupilareazavg(:,typi,:),3), '-', 'color', ttcol(s,:), 'linewidth', 2)
+    tt2pinds(s) = find(ICtrialtypes==tt2p(s));
 end
 
-tt2p = [106 107 110 111 506 511];
 figure; hold all
 for s = 1:numel(tt2p)
     typi = ICtrialtypes==tt2p(s);
-    temparea = cat(3,ttpupilareaz{typi,:});
+    temparea = squeeze(nanmean(cat(3,ttpupilareaz{typi,:}),[1,2]));
     histogram(temparea(:), -3:0.1:3, 'normalization', 'probability')
 end
 
@@ -254,6 +260,8 @@ end
 figure('Position', [800 300 300 240])
 hold all
 for s = 1:numel(tt2p)
+    typi = ICtrialtypes==tt2p(s);
+    temparea = squeeze(nanmean(cat(3,ttpupilareaz{typi,:}),[1,2]));
 b = boxchart(s*ones(numel(temparea),1), temparea(:), 'BoxFaceColor', ttcol(s,:), 'MarkerStyle', 'none', 'linewidth', 1);%, 'Notch' , 'on'); %, 'FontName', 'Arial')
 %b.MarkerColor = ttcol(s,:);
 b.BoxFaceColor = ttcol(s,:);
@@ -266,3 +274,39 @@ set(gca, 'FontSize', fs, 'XTick', 1:numel(tt2p), 'XTickLabel', ttdesc, 'XTickLab
 ylabel('z-Pupil Area', 'FontSize', fs)
 title(' ', 'FontSize', fs)
 xlabel(' ', 'FontSize', fs)
+
+figure
+hold all
+for s = 1:4%numel(tt2p)
+    typi = ICtrialtypes==tt2p(s);
+plot(trackeyetl, squeeze(trialpupilareazavg(:,typi,:)), 'Color', ttcol(s,:))
+end
+xlabel('Time (s)')
+ylabel('z-Pupil Area')
+title('Each Session')
+
+figure
+hold all
+for s = 1:4%numel(tt2p)
+    typi = ICtrialtypes==tt2p(s);
+plot(trackeyetl, nanmean(trialpupilareazavg(:,typi,:),3), 'Color', ttcol(s,:), 'LineWidth', 1)
+end
+xlabel('Time (s)')
+ylabel('z-Pupil Area')
+title('Average across Sessions')
+
+
+tempmat = squeeze(mean(trialpupilareazavg(tloi, tt2pinds,:),1))';
+tempmat(any(isnan(tempmat),2), :)=[];
+[p,tbl,stats] = friedman(tempmat);
+figure; multcompare(stats)
+disp(p)
+
+ttpupilareazavg = NaN(numel(valfgses), numel(tt2p));
+for s = 1:numel(tt2p)
+    typi = ICtrialtypes==tt2p(s);
+    ttpupilareazavg(:,s) = squeeze(nanmean(cat(3,ttpupilareaz{typi,:}),[1,2]));
+end
+[p,tbl,stats] = friedman(ttpupilareazavg);
+figure; multcompare(stats)
+disp(p) % 0.7220
