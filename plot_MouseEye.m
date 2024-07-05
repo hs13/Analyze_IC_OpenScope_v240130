@@ -50,7 +50,7 @@ for ises = 1:Nsessions
     load([pathpp 'trialpupil.mat']) %'eyecamframerate', 'trackeyetli', 'trialpupildata', 'trialpupilarea'
 
     % trackeyetli = trialdistmodecom.(whichblock).trackeyetli;
-    tloi = trackeyetli>0 & trackeyetli<=0.4*eyecamframerate;
+    tloi = trackeyetli>=0 & trackeyetli<0.4*eyecamframerate;
 
     pupareamean = nanmean(pupiltracking.area);
     pupareastd = nanstd(pupiltracking.area);
