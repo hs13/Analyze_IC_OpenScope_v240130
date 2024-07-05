@@ -693,6 +693,7 @@ for c = 1:numel(indsigcomp)
     plot([C(indsigcomp(c),1) C(indsigcomp(c),2)], [h h], 'k-')
     plot( mean([C(indsigcomp(c),1) C(indsigcomp(c),2)]), h+0.01*range(yl), 'k*')
 end
+text(0.7, yl(1)+0.02*range(yl), sprintf('p=%.4f', p), 'FontSize', fs, 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'left')
 set(gca, 'XTick', 1:numel(neurogrouplabels), 'XTickLabel', neurogrouplabels, 'FontSize', fs)
 ylim([yl(1) yl(2)+0.02*range(yl)*numel(indsigcomp)])
 xlim([0.5 numel(neurogrouplabels)+0.5])
