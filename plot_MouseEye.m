@@ -103,29 +103,59 @@ tt2p = [106 107 110 111];
 ttdesc = {'I_C_1', 'L_C_1', 'L_C_2', 'I_C_2'};
 hbe = 0:0.5:16;
 hbc = ( hbe(1:end-1)+hbe(2:end) )/2;
-histeachses = cell(size(tt2p));
-histallses = cell(size(tt2p));
+histtrialeachses = cell(size(tt2p));
+histtrialallses = cell(size(tt2p));
+histtrialmaxeachses = cell(size(tt2p));
+histtrialmaxallses = cell(size(tt2p));
 for s = 1:4%numel(tt2p)
     typi = ICtrialtypes==tt2p(s);
     
-    histeachses{s} = NaN(length(hbe)-1, Nsessions);
+    histtrialeachses{s} = NaN(length(hbe)-1, Nsessions);
+    histtrialmaxeachses{s} = NaN(length(hbe)-1, Nsessions);
     for ises = 1:Nsessions
         if isempty(ttpupilposx{1,ises})
             continue
-        else
         end
         tempx = ttpupilposx{typi,ises};
         tempy = ttpupilposy{typi,ises};
         tempdeg = sqrt(tempx.^2+tempy.^2);
         [P,EDGES]=histcounts(tempdeg(:), hbe, 'normalization', 'cdf');
-        histeachses{s}(:,ises) = P;
+        histtrialeachses{s}(:,ises) = P;
+        
+        [P,EDGES]=histcounts(max(tempdeg,[],2), hbe, 'normalization', 'cdf');
+        histtrialmaxeachses{s}(:,ises) = P;
     end
     
     tempx = cat(1,ttpupilposx{typi,:});
     tempy = cat(1,ttpupilposy{typi,:});
     tempdeg = sqrt(tempx.^2+tempy.^2);
     [P,EDGES]=histcounts(tempdeg(:), hbe, 'normalization', 'cdf');
-    histallses{s} = P;
+    histtrialallses{s} = P;
+
+    [P,EDGES]=histcounts(max(tempdeg,[],2), hbe, 'normalization', 'cdf');
+    histtrialmaxallses{s} = P;
+end
+
+
+tempx = cat(1,ttpupilposx{ismember(ICtrialtypes, tt2p),:});
+tempy = cat(1,ttpupilposy{ismember(ICtrialtypes, tt2p),:});
+tempdeg = sqrt(tempx.^2+tempy.^2);
+mean(tempdeg(:)<8)
+
+%figure('Position', [400 100 630 120])
+figure('Position', [400 100 1260 240])
+%annotation('textbox',[0 0.05 1 0.1], 'string', 'Pupil Position (vis. deg.)', 'FontSize', fs, 'edgecolor', 'none', 'HorizontalAlignment','center')
+for s = 1:4%numel(tt2p)
+    subplot(1,4,s)
+    hold all
+    plot(hbe(2:end), histtrialeachses{s})
+    plot(hbe(2:end), histtrialallses{s}, 'k-', 'LineWidth', 2)
+    plot([8 8], [0 1], 'k--', 'LineWidth', 0.5)
+    axis([0 16 0 1])
+    set(gca, 'XTick', 0:8:16, 'FontSize', fs)
+    xlabel('Visual Degrees', 'FontSize', fs)
+    ylabel('Gaze Deviation CDF', 'FontSize', fs)
+    title(ttdesc{s}, 'FontSize', fs)
 end
 
 %figure('Position', [400 100 630 120])
@@ -134,13 +164,13 @@ figure('Position', [400 100 1260 240])
 for s = 1:4%numel(tt2p)
     subplot(1,4,s)
     hold all
-    plot(hbe(2:end), histeachses{s})
-    plot(hbe(2:end), histallses{s}, 'k-', 'LineWidth', 2)
+    plot(hbe(2:end), histtrialmaxeachses{s})
+    plot(hbe(2:end), histtrialmaxallses{s}, 'k-', 'LineWidth', 2)
     plot([8 8], [0 1], 'k--', 'LineWidth', 0.5)
     axis([0 16 0 1])
     set(gca, 'XTick', 0:8:16, 'FontSize', fs)
     xlabel('Visual Degrees', 'FontSize', fs)
-    ylabel('CDF', 'FontSize', fs)
+    ylabel('Gaze Max Deviation CDF', 'FontSize', fs)
     title(ttdesc{s}, 'FontSize', fs)
 end
 
