@@ -361,7 +361,7 @@ end
 
 %% example session
 ises = 2;
-pltcb=true; 
+pltcb=false; 
 cl=[0 0.08];
 figure('Position', [400 100 630 180])
 annotation('textbox',[0 0.05 1 0.1], 'string', 'Pupil Position (vis. deg.)', 'FontSize', fs, 'edgecolor', 'none', 'HorizontalAlignment','center')
@@ -392,11 +392,14 @@ for s = 1:4%numel(tt2p)
 end
 
 
-linecols = lines(Nsessions);
 %figure('Position', [400 100 630 120])
 figure('Position', [400 100 1260 240])
 %annotation('textbox',[0 0.05 1 0.1], 'string', 'Pupil Position (vis. deg.)', 'FontSize', fs, 'edgecolor', 'none', 'HorizontalAlignment','center')
 for s = 1:4%numel(tt2p)
+    typi = ICtrialtypes==tt2p(s);
+    tempx = ttpupilposx{typi,ises};
+    tempy = ttpupilposy{typi,ises};
+    
     switch tt2p(s)
         case 106
             tempim = IC1wcfg1;
@@ -441,6 +444,61 @@ for s = 1:4%numel(tt2p)
     % end
 end
 colormap redblue
+
+%%
+% density plot with transparent scatterplot
+%figure('Position', [400 100 630 120])
+figure('Position', [400 100 1260 240])
+%annotation('textbox',[0 0.05 1 0.1], 'string', 'Pupil Position (vis. deg.)', 'FontSize', fs, 'edgecolor', 'none', 'HorizontalAlignment','center')
+for s = 1:4%numel(tt2p)
+    typi = ICtrialtypes==tt2p(s);
+    tempx = ttpupilposx{typi,ises};
+    tempy = ttpupilposy{typi,ises};
+    
+    switch tt2p(s)
+        case 106
+            tempim = IC1wcfg1;
+        case 107
+            tempim = LC1wcfg1;
+        case 110
+            tempim = LC2wcfg1;
+        case 111
+            tempim = IC2wcfg1;
+        case 506
+            tempim = IRE1wcfg1;
+        case 511
+            tempim = IRE2wcfg1;
+        otherwise
+            error('designate tempim')
+    end
+    sescnt=0;
+    subplot(1,4,s)
+    %figure
+    xax = -floor(size(blankwcfg1,2)/2)+(0:size(blankwcfg1,2)-1);
+    xax = xax/nICimpixperdeg;
+    yax = -floor(size(blankwcfg1,1)/2)+(0:size(blankwcfg1,1)-1);
+    yax = yax/nICimpixperdeg;
+    imagesc(xax, yax, repmat(tempim,1,1,3), 'AlphaData', 0.1)
+    hold on
+    scatter(tempx(:),tempy(:), 1, 'o', 'MarkerEdgeColor', 'none', 'MarkerFaceColor', 'r', 'MarkerFaceAlpha', 0.1);
+    caxis(cl)
+    if pltcb && s==4
+    cb = colorbar;
+    cb.Ticks = [cl];
+    cb.FontSize = fs;
+    else
+    title(ttdesc{s}, 'FontSize', fs)
+    end
+    axis equal
+    axis([xax(1) xax(end) yax(1) yax(end)])
+    axis off
+    %set(gca, 'FontSize', fs)
+    title(ttdesc{s}, 'FontSize', fs)
+    % xlabel('Pupil Position (vis. deg.)')
+    % if s==1
+    %     ylabel('Pupil Position (vis. deg.)', 'FontSize', fs)
+    % end
+end
 
 %% pupil area on IC vs LC vs RE trials (R1C2)
 trackeyetl = trackeyetli/eyecamframerate;
