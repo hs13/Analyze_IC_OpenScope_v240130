@@ -203,15 +203,16 @@ disp(unique(o))
         % toc % takes ~5sec per probe
 
 
-        salttrials = opto.optotrials~=find(strcmp(opto.stimlist, 'cosine'));
+        salttrials = opto.optotrials~=find(contains(opto.stimlist, 'cosine'));
         saltbasetli = [-floor(0.5/Tres):-1]';
-        salttesttli = [0:floor(0.009/Tres)]';
+        % saltbasetli = [-floor(0.009/Tres):-1]';
+        salttesttli = [floor(0.001/Tres):floor(0.009/Tres)]';
         probeunits_saltp = NaN(size(neuoind));
         probeunits_saltI = NaN(size(neuoind));
         for ii = 1:numel(neuoind)
             spt_baseline = squeeze(optopsth(ismember(optopsthtli, saltbasetli), salttrials, ii))';
             spt_test = squeeze(optopsth(ismember(optopsthtli, salttesttli), salttrials, ii))';
-            [p I] = salt(spt_baseline,spt_test,Tres);
+            [p I] = salt(spt_baseline,spt_test,Tres,0.009);
             probeunits_saltp(ii) = p;
             probeunits_saltI(ii) = I;
         end
@@ -222,79 +223,48 @@ disp(unique(o))
 
     fprintf('%.2f%% (%d/%d)\n', 100*mean(probeunits_saltp<0.01), nnz(probeunits_saltp<0.01), length(probeunits_saltp))
 
-        %{
-% % psth averaged across all units, for each opto condition
-% relabreord = [opto.relabel(:)', {' '}];
-% figure;
-for typi = 1:12
-    smhalfwin = 0; smwin = smhalfwin*2+1;
-    temppsth = convn(optopsth(:, opto.optotrials==typi, :), ones(smwin,1)/smwin, 'valid');
-    tempcond = opto.presumedcond{typi};
-    %subplot(3,4,typi)
-    
-    if mod(typi,4)==1
-        figure
-    end
-    subplot(2,2,mod(typi-1,4)+1)
-    plot(optopsthtli(smhalfwin+1:end-smhalfwin), 1000*squeeze(mean(temppsth, [2 3])))
-    xlabel('Time (ms)')
-    ylabel('Rate (Hz)')
-    title(tempcond)
-    optohz = strsplit(tempcond, 'Hz');
-    optohz = str2double(optohz{1});
-    set(gca, 'Xtick', [1000/optohz * (0:optohz)], 'Xgrid', 'on')
-end
-
-% % psth averaged across all units, across trials (does baseline decrease across trials?
-typi = 3;
-smhalfwin = 5; smwin = smhalfwin*2+1; smker = ones(smwin,1)/smwin;
-kerwinhalf = 5; kersigma = 2;
-kergauss = normpdf( (-kerwinhalf:kerwinhalf)', 0,kersigma);
-smker = (kergauss/sum(kergauss));
-temppsth = convn(optopsth(:, opto.optotrials==typi, :), smker, 'same');
-cm = gray(nnz(opto.optotrials==typi)); cm(:,2) = 0; cm(:,3) = 0;
-figure
-p = plot(optopsthtli, 1000*squeeze(mean( temppsth, 3)));%, 'Color', cm)
-for ii = 1:numel(p)
-set(p(ii), 'Color', cm(ii,:))
-end
-title(opto.presumedcond{typi})
-
-typi = 3;
-smhalfwin = 5; smwin = smhalfwin*2+1; smker = ones(smwin,1)/smwin;
-kerwinhalf = 5; kersigma = 2;
-kergauss = normpdf( (-kerwinhalf:kerwinhalf)', 0,kersigma);
-smker = (kergauss/sum(kergauss));
-temppsth = convn(optopsth(:, opto.optotrials==typi, :), smker, 'same');
-cm = gray(nnz(opto.optotrials==typi)); cm(:,2) = 0; cm(:,3) = 0;
-tempsalt = (probeunits_saltp<0.01);
-figure
-p = plot(optopsthtli, 1000*squeeze(mean( temppsth(:,:,tempsalt), 3)));%, 'Color', cm)
-for ii = 1:numel(p)
-set(p(ii), 'Color', cm(ii,:))
-end
-title(opto.presumedcond{typi})
-
-[sv,si]=sort(probeunits_saltp);
-for ii = 1:10
-    disp([si(ii) nnz(optopsth(:, opto.optotrials==typi, si(ii)))])
-end
-exunit = 145; typi = 3;
-exunit = si(34); typi = 3;
-figure; imagesc(squeeze(optopsth(:, opto.optotrials==typi, exunit))')
-colormap(flipud(gray))
-
-% CHECK THAT SALT WORKED REASONABLY WELL
-[sv,si]=sort(probeunits_saltp);
-optopsthavg = squeeze(mean(optopsth(:,salttrials,si), 2));
-figure; imagesc(squeeze(optopsthavg)')
-colormap(flipud(gray))
-caxis([0 0.1])
-        %}
-
+    %{
+    % smwin = 5;
+    % temppsth = convn(optopsth(:, opto.optotrials==typi, :), ones(smwin,1)/smwin, 'valid');
+    figure
+    for typi = 1:12
+        subplot(3,4,typi)
+        hold all
+        trialsoi = opto.optotrials==typi;
+        plot(optopsthtli, squeeze(mean(optopsth(:,trialsoi, probeunits_saltp>=0.01),2)), 'k-')        
+        plot(optopsthtli, squeeze(mean(optopsth(:,trialsoi, probeunits_saltp<0.01),2)), 'c-')
+        title(opto.stimlist{typi})
     end
 
+    figure
+    hold all
+    typi=4;
+    trialsoi = opto.optotrials==typi;
+    temppsth = squeeze(mean(optopsth(:,trialsoi, probeunits_saltp<0.01),2));
+    plot(optopsthtli, 0.1*(1:size(temppsth,2))+temppsth)
+    title(opto.stimlist{typi})
 
+    smwin = 5;
+    [sv,si] = sort(probeunits_saltp);
+    figure
+    for typi = 1:12
+        subplot(2,6,typi)
+        %figure
+        hold all
+        trialsoi = opto.optotrials==typi;
+        imagesc(optopsthtli, 1:size(optopsth,3), squeeze(mean(optopsth(:,trialsoi, si),2))')
+        plot([0 0], [0.5 size(optopsth,3)+0.5], 'w--')
+        plot([1000 1000], [0.5 size(optopsth,3)+0.5], 'w--')
+        plot([optopsthtli(1) optopsthtli(end)], nnz(probeunits_saltp<0.01)*[1 1], 'w-', 'LineWidth', 1)
+        plot([optopsthtli(1) optopsthtli(end)], nnz(probeunits_saltp<0.05)*[1 1], 'w--', 'LineWidth', 1)
+        axis([-100 1100 0.5 size(optopsth,3)+0.5])
+        set(gca, 'YDir', 'reverse')
+        caxis([0 50]/1000)
+        title(opto.stimlist{typi})
+    end
+    %}
+
+    end
 end
 
 %% plot each session

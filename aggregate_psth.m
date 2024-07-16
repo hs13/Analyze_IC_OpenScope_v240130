@@ -562,3 +562,32 @@ end
 areaunitstab = table(v,c,areaunitsperses);
 open areaunitstab
 %}
+
+%% aggregate optotagged units
+neuoindagg = cell(numel(probes),Nsessions);
+mousegenotype = cell(1,Nsessions);
+units_saltI_agg = cell(numel(probes),Nsessions);
+units_saltp_agg = cell(numel(probes),Nsessions);
+for ises = 1:Nsessions
+    fprintf('Session %d/%d %s\n', ises, Nsessions, nwbsessions{ises} )
+    pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
+    for iprobe = 1:numel(probes)
+        clearvars('neuoind', 'opto', 'probeunits_saltI', 'probeunits_saltp')
+        load([pathpp 'psth_opto_probe' probes{iprobe} '.mat'], 'neuoind', 'opto', 'probeunits_saltI', 'probeunits_saltp')
+        neuoindagg{iprobe, ises} = neuoind;
+        mousegenotype{ises} = opto.genotype;
+        units_saltI_agg{iprobe, ises} = probeunits_saltI;
+        units_saltp_agg{iprobe, ises} = probeunits_saltp;
+    end
+end
+
+load([datadir 'postprocessed\openscope_psthavgall.mat'], 'neuoindall')
+if ~isequal(neuoindall, cat(1,neuoindagg{:}))
+    error('check consistency with aggregation method above')
+end
+units_saltI_all = cat(1,units_saltI_agg{:});
+units_saltp_all = cat(1,units_saltp_agg{:});
+
+save([datadir 'postprocessed\openscope_optotagging_salt.mat'], ...
+    'mousegenotype', 'units_saltI_all', 'units_saltp_all')
+

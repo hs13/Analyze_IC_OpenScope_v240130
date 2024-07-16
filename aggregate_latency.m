@@ -77,13 +77,13 @@ for ises = 1:Nsessions
 end
 
 %%
+load('S:\OpenScopeData\00248_v230821\postprocessed\openscope_popavg_all.mat')
 neulocall = cat(1,neulocagg{:});
 neuV1 = contains(neulocall, 'VISp') & ~contains(neulocall, 'VISpm');
 neuLM = contains(neulocall, 'VISl');
 
 ICtrialtypes = [0 101 105 106 107 109 110 111 506 511 1105 1109 1201 1299 ...
     1301 1302 1303 1304 1305 1306 1307 1308];
-load('S:\OpenScopeData\00248_v230821\postprocessed\openscope_popavg_all.mat')
 
 fs=12;
 
