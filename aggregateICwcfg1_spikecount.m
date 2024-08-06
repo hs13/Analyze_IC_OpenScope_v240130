@@ -456,6 +456,32 @@ for ii = 1:numel(disperses)
     repsimbstvsessem(ii) = std(repsimbsperses)/sqrt(Nsessions);
     
 end
+
+%%
+anot = sprintf('Open Scope ICwcfg1 high-repetition trials: representation similarity across trials');
+figure
+annotation('textbox', [0.1 0.9 0.8 0.1], 'String', anot, 'edgecolor', 'none','FontSize', 12)
+for isp = 1:3
+    switch isp
+        case 1
+            temprepsim = repsimtvpairtrials;
+            sptitle = 'trial pairs, off-diagonal';
+        case 2
+            temprepsim = repsimtvmeantrial;
+            sptitle = 'mean vs each trial, off-diagonal';
+        case 3
+            temprepsim = repsimalltvmeantrial;
+            sptitle = 'mean vs each trial, all matrix elements';
+    end
+subplot(2,2,isp)
+hold all
+plot(disperses, temprepsim, '.', 'Color', 0.5*[1 1 1])
+errorbar(disperses, mean(temprepsim,1), std(temprepsim,0,1)/sqrt(Nsessions), 'bx', 'LineWidth', 2)
+xlabel('log(mean) vs log(var) slope')
+ylabel('representation similarity')
+title(sptitle)
+end
+
 %%
 fs=10;
 xl = [disperses(1) disperses(end)];
