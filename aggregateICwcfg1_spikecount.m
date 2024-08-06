@@ -52,7 +52,7 @@ neuvisRS = neuvis & neuRS;
 end
 save('G:\My Drive\RESEARCH\logmean_logvar\OpenScope_spkcnt_ICwcfg1.mat', 'nwbsessions', 'hireptt', 'spkcntIChiV1agg', 'spkcntIChivisctxagg', 'unitlocvisctx')
 
-
+%%
 if ismac
     drivepath = '/Users/hyeyoung/Library/CloudStorage/GoogleDrive-shinehyeyoung@gmail.com/My Drive/';
 else
@@ -139,6 +139,9 @@ alltrialpairs = true;
 
 fffitperses = zeros(Nhireptt, length(disperses), Nsessions);
 cossimtvperses = cell(size(disperses));
+repsimtvpairtrials = zeros(Nsessions, numel(disperses));
+repsimtvmeantrial = zeros(Nsessions, numel(disperses));
+repsimalltvmeantrial = zeros(Nsessions, numel(disperses));
 cossimbstvperses = cell(size(disperses));
 
 Nhireptt = numel(spkcntICttagg{1});
@@ -242,6 +245,13 @@ hold on; xl = xlim; plot(xl,xl,'r-')
         else
             Ntrialpair = min([size(C,1) 10000]);
         end
+        
+        newmu = squeeze(mean(newspkcntnsttshuf,1));
+        mucs = normr(newmu)*normr(newmu)';
+        triuind = find(triu(true(Nhireptt),1));
+        temprepsim = NaN(Ntrialpair,1);
+        temprepsimmean = NaN(Ntrialpair,1);
+        temprepsimallmean = NaN(Ntrialpair,1);
 
         tempNTRE1asIC1vsLC1 = 0;
         tempNTRE2asIC2vsLC2 = 0;
@@ -250,8 +260,8 @@ hold on; xl = xlim; plot(xl,xl,'r-')
         %tic
         tempcossimsum = zeros(Nhireptt, Nhireptt);
         for c = 1:Ntrialpair
-            temp1 = squeeze(newspkcntnsttshuf(C(c,1),:,:));
-            temp2 = squeeze(newspkcntnsttshuf(C(c,2),:,:));
+            temp1 = squeeze(newspkcntnsttshuf(C(c,1),:,:)); % Nttns*Nneurons
+            temp2 = squeeze(newspkcntnsttshuf(C(c,2),:,:)); % Nttns*Nneurons
             
             % normalized_M = normr(M) takes a single matrix or cell array of matrices, M, and returns the matrices with rows normalized to a length of one.
             % tempdot = temp1*temp2';
@@ -259,6 +269,13 @@ hold on; xl = xlim; plot(xl,xl,'r-')
             %figure; plot(normr(temp1)*normr(temp2)', tempdot./tempnorm, '.') % essentially equal
             tempcs = normr(temp1)*normr(temp2)';
             tempcossimsum = tempcossimsum + tempcs;
+            
+            temprepsimmean(c) = corr( mucs(triuind), tempcs(triuind) );
+            temprepsimallmean(c) = corr( mucs(:), tempcs(:) );
+            
+            tempcs1 = normr(temp1)*normr(temp1)';
+            tempcs2 = normr(temp2)*normr(temp2)';
+            temprepsim(c) = corr( tempcs1(triuind), tempcs2(triuind) );
 
         tempNTRE1asIC1vsLC1 = tempNTRE1asIC1vsLC1 + nnz(tempcs(hireptt==1105, hireptt==106)>tempcs(hireptt==1105, hireptt==107));
         tempNTRE2asIC2vsLC2 = tempNTRE2asIC2vsLC2 + nnz(tempcs(hireptt==1109, hireptt==111)>tempcs(hireptt==1109, hireptt==110));
@@ -268,6 +285,10 @@ hold on; xl = xlim; plot(xl,xl,'r-')
         %toc
         tempcossim(:,:, ises) = tempcossimsum/Ntrialpair;
         
+        repsimtvpairtrials(ises,ii) = mean(temprepsim);
+        repsimtvmeantrial(ises,ii) = mean(temprepsimmean);
+        repsimalltvmeantrial(ises,ii) = mean(temprepsimallmean);
+
         PTRE1asIC1vsLC1(ises,ii) = tempNTRE1asIC1vsLC1/Ntrialpair;
         PTRE2asIC2vsLC2(ises,ii) = tempNTRE2asIC2vsLC2/Ntrialpair;
         PIC1asXRE1vsXRE2(ises,ii) = tempNIC1asXRE1vsXRE2/Ntrialpair;
@@ -288,6 +309,8 @@ hold on; xl = xlim; plot(xl,xl,'r-')
     
     cossimtvperses{ii} = tempcossim;
     cossimbstvperses{ii} = tempcossimbs;
+    
+    
     toc(dc)
     
     
@@ -309,7 +332,8 @@ end
 
 save([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_keeptotalvariance_', neuopt, '.mat'], ...
     'lmlvslope', 'lmlvyintercept', 'fffitperses', 'disperses', 'cossimtvperses', 'cossimbstvperses', ...
-    'PTRE1asIC1vsLC1', 'PTRE2asIC2vsLC2', 'PIC1asXRE1vsXRE2', 'PIC2asXRE2vsXRE1')
+    'PTRE1asIC1vsLC1', 'PTRE2asIC2vsLC2', 'PIC1asXRE1vsXRE2', 'PIC2asXRE2vsXRE1', ...
+    'repsimtvpairtrials', 'repsimtvmeantrial', 'repsimalltvmeantrial')
 
 %% cosine similarity and representational similarity
 incldiagrepsim = true;
