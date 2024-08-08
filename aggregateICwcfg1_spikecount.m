@@ -548,7 +548,7 @@ ylabel('base-subtracted representation similarity')
 
 
 %% trial-by-trial inference cosine similarity 
-pltsesavg = false;
+pltsesavg = true;
 PTREasICvsLC = mean(cat(3,PTRE1asIC1vsLC1, PTRE2asIC2vsLC2),3);
 PICasXRE = mean(cat(3,PIC1asXRE1vsXRE2, PIC2asXRE2vsXRE1),3);
 
