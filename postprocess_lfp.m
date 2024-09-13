@@ -25,11 +25,23 @@ nwblfp = nwbRead(nwblfpfile);
 
 lfp_probe = nwblfp.acquisition.get('probe_2_lfp');
 lfp = lfp_probe.electricalseries.get('probe_2_lfp_data');
+lfpelectrodes = lfp.electrodes.data.load(); 
 lfpdata = lfp.data.load(); % nprobes * ntimepoints
-lfptimestaps = lfp.timestamps.load(); % ntimepoints * 1, units in seconds
+lfptimestamps = lfp.timestamps.load(); % ntimepoints * 1, units in seconds
 
 
 %% figure out which electrode is where
+
+%% resample to 1000Hz (same as spiking data)
+nsamples = 1250*10;
+t0ind = find(lfptimestamps<1800,1,'last');
+tinds = t0ind+1:t0ind+nsamples;
+figure;
+plot(lfptimestamps(tinds),5*10^-4*(0:size(lfpdata,1)-1)'+lfpdata(:,tinds));
+
+
+
+
 
 
 %% align to vis stim
