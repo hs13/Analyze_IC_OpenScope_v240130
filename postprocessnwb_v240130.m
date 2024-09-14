@@ -43,6 +43,10 @@ for ises = 1:numel(nwbsessions)
     electrode_probeid = nwb.general_extracellular_ephys_electrodes.vectordata.get('probe_id').data.load();
     electrode_localid = nwb.general_extracellular_ephys_electrodes.vectordata.get('local_index').data.load();
     electrode_id = 1000*electrode_probeid + electrode_localid;
+    if ~isequal( 1000*electrode_probeid + electrode_localid, ...
+        nwb.general_extracellular_ephys_electrodes.id.data.load()) 
+        error('check how electrode_id is calculated')
+    end
     electrode_location = nwb.general_extracellular_ephys_electrodes.vectordata.get('location').data.load();
 
     disp(unique(electrode_location)')
