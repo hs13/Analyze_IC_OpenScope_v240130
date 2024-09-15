@@ -260,9 +260,9 @@ save(sprintf('%sLFP_psth_probe%s.mat', pathpp, probes{iprobe}), ...
 
 
 %% CSD: negative values mean sink (influx, depol), positive values mean source (outflux)
-lfpelecspacing = 0.04; % 40micrometers, i.e., 0.04mm
-csdelectinds = 2:Nelec-1;
-csdresamp = -( lfpresamp(csdelectinds+1,:)-2*lfpresamp(csdelectinds,:)+lfpresamp(csdelectinds-1,:) )/(lfpelecspacing.^2);
+% lfpelecspacing = 0.04; % 40micrometers, i.e., 0.04mm
+% csdelectinds = 2:Nelec-1;
+% csdresamp = -( lfpresamp(csdelectinds+1,:)-2*lfpresamp(csdelectinds,:)+lfpresamp(csdelectinds-1,:) )/(lfpelecspacing.^2);
 
 % smooth with a gaussian kernel first
 kerwinhalf = 5; kersigma = 2;
@@ -274,7 +274,6 @@ lfpelecspacing = 0.04; % 40micrometers, i.e., 0.04mm
 csdelectinds = 2:Nelec-1;
 csdconv = -( lfpconv(csdelectinds+1,:)-2*lfpconv(csdelectinds,:)+lfpconv(csdelectinds-1,:) )/(lfpelecspacing.^2);
 
-%%
 csdvispsth = struct();
 tic
 for b = 1:numel(visblocks)
@@ -322,7 +321,7 @@ end
 clear tempcsd psthtrialinds
 toc
 
-% sanity check
+%{
 % compare with averaging first then calculating CSD
 whichblock = 'ICwcfg1_presentations';
 blocktrialorder = vis.(whichblock).ICtrialtypes(vis.(whichblock).trialorder+1);
@@ -333,31 +332,66 @@ figure
 for itt = 1:numel(tt2p)
     trialsoi = blocktrialorder==tt2p(itt);
     subplot(2,3,itt)
-imagesc(psthtli, csdelectinds, squeeze(mean( csdvispsth.(whichblock)(:,trialsoi,:),2))' );
-xlim(xl)
-ylim(yl)
-caxis([-0.025 0.025])
-set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpelecvec.location(csdelectinds), 'YDir', 'normal')
-title(tt2p(itt))
-colorbar
+    imagesc(psthtli, csdelectinds, squeeze(mean( csdvispsth.(whichblock)(:,trialsoi,:),2))' );
+    xlim(xl)
+    ylim(yl)
+    caxis([-0.025 0.025])
+    set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpelecvec.location(csdelectinds), 'YDir', 'normal')
+    title(tt2p(itt))
+    colorbar
 
-lfpavg = squeeze(mean( convn(lfpvispsth.(whichblock)(:,trialsoi,:),kergauss', 'same') ,2))';
-csdavg = -( lfpavg(csdelectinds+1,:)-2*lfpavg(csdelectinds,:)+lfpavg(csdelectinds-1,:) )/(lfpelecspacing.^2);
+    lfpavg = squeeze(mean( convn(lfpvispsth.(whichblock)(:,trialsoi,:),kergauss', 'same') ,2))';
+    csdavg = -( lfpavg(csdelectinds+1,:)-2*lfpavg(csdelectinds,:)+lfpavg(csdelectinds-1,:) )/(lfpelecspacing.^2);
     subplot(2,3,itt+3)
-imagesc(psthtli, csdelectinds, csdavg );
-xlim(xl)
-ylim(yl)
-caxis([-0.025 0.025])
-set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpelecvec.location(csdelectinds), 'YDir', 'normal')
-title(tt2p(itt))
-colorbar
+    imagesc(psthtli, csdelectinds, csdavg );
+    xlim(xl)
+    ylim(yl)
+    caxis([-0.025 0.025])
+    set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpelecvec.location(csdelectinds), 'YDir', 'normal')
+    title(tt2p(itt))
+    colorbar
 end
 colormap jet
 
 % compare csdresamp vs csdconv
+t0ind = prctile(trsinds,10); % one of the spontaneous blocks
+tdur = 1000;
+xl = [t0ind t0ind+tdur] - trsinds(1);
+yl = [ctxelecbottom ctxelectop]+1;
+cl = [-0.1 0.1];
+figure
+subplot(1,2,1)
+imagesc(csdresamp(:,trsinds))
+xlim(xl)
+set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpelecvec.location(csdelectinds), 'YDir', 'normal')
+colorbar
+%cl=caxis;
+caxis(cl)
+ylim(yl)
+subplot(1,2,2)
+imagesc(csdconv(:,trsinds))
+set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpelecvec.location(csdelectinds), 'YDir', 'normal')
+colorbar
+caxis(cl)
+xlim(xl)
+ylim(yl)
+colormap jet
+%}
+
+save(sprintf('%sLFP_CSD_probe%s.mat', pathpp, probes{iprobe}), ...
+    'Tres', 'kergauss', 'lfpelecspacing', 'csdelectinds', ...
+    'vis', 'psthtli', 'csdvispsth', ...
+    'opto', 'optopsthtli', 'csdoptopsth', '-v7.3')
 
 %% TFR : for now, just choose one electrode in layer 2/3
 % TODO: CHOOSE THE ELECTRODE WITH THE STRONGEST SINK IN FEEDBACK PERIOD IN L2/3
+disp('TODO: CHOOSE THE ELECTRODE WITH THE STRONGEST SINK IN FEEDBACK PERIOD IN L2/3')
+whichblock = 'ICwcfg1_presentations';
+blocktrialorder = vis.(whichblock).ICtrialtypes(vis.(whichblock).trialorder+1);
+trialsoi = ismember(blocktrialorder, [1105, 1100]);
+tloi = psthtli>=100 & psthtli<150;
+squeeze(mean( csdvispsth.(whichblock)(tloi,trialsoi,:),[1,2]))
+
 % 30 seconds and 7 GB for each electrode
 elecL23 = round(median(find(contains(lfpelecvec.location, '2/3'))));
 S = lfpresamp(elecL23,:)';
