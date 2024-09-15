@@ -166,6 +166,12 @@ lfpvispsth = struct();
 %tic
 for b = 1:numel(visblocks)
     if contains(visblocks{b}, 'spontaneous')
+        lfpvispsth.(visblocks{b}) = cell(numel(vis.(visblocks{b}).start_time),1);
+        for itrial = 1:numel(vis.(visblocks{b}).start_time)
+        trsinds = find( lfptimeresamp>=vis.(visblocks{b}).start_time(itrial) ...
+            & lfptimeresamp<=vis.(visblocks{b}).stop_time(itrial) );
+        lfpvispsth.(visblocks{b}){itrial} = lfpresamp(:,trsinds)';            
+        end
         continue
     end
 
@@ -252,7 +258,106 @@ save(sprintf('%sLFP_psth_probe%s.mat', pathpp, probes{iprobe}), ...
     'Tres', 'vis', 'psthtli', 'lfpvispsth', ...
     'opto', 'optopsthtli', 'lfpoptopsth', '-v7.3')
 
+
+%% CSD: negative values mean sink (influx, depol), positive values mean source (outflux)
+lfpelecspacing = 0.04; % 40micrometers, i.e., 0.04mm
+csdelectinds = 2:Nelec-1;
+csdresamp = -( lfpresamp(csdelectinds+1,:)-2*lfpresamp(csdelectinds,:)+lfpresamp(csdelectinds-1,:) )/(lfpelecspacing.^2);
+
+% smooth with a gaussian kernel first
+kerwinhalf = 5; kersigma = 2;
+kergauss = normpdf( (-kerwinhalf:kerwinhalf), 0,kersigma);
+kergauss = (kergauss/sum(kergauss));
+lfpconv = convn(lfpresamp, kergauss, 'same');
+
+lfpelecspacing = 0.04; % 40micrometers, i.e., 0.04mm
+csdelectinds = 2:Nelec-1;
+csdconv = -( lfpconv(csdelectinds+1,:)-2*lfpconv(csdelectinds,:)+lfpconv(csdelectinds-1,:) )/(lfpelecspacing.^2);
+
+%%
+csdvispsth = struct();
+tic
+for b = 1:numel(visblocks)
+    if contains(visblocks{b}, 'spontaneous')
+        csdvispsth.(visblocks{b}) = cell(numel(vis.(visblocks{b}).start_time),1);
+        for itrial = 1:numel(vis.(visblocks{b}).start_time)
+        t0rsind = find( lfptimeresamp>=vis.(visblocks{b}).start_time(itrial) ...
+            & lfptimeresamp<=vis.(visblocks{b}).stop_time(itrial) );
+        csdvispsth.(visblocks{b}){itrial} = csdconv(:,t0rsind)';            
+        end
+        continue
+    end
+
+    % actual start time could be up to 1ms after 0 index
+    %psthtrialinds = floor(vis.(visblocks{b}).trialstart'/Tres)+1 + psthtli;
+    Ntrials = numel(vis.(visblocks{b}).trialstart);
+    lfppsthtrialinds = zeros(length(psthtli), Ntrials);
+    for itrial = 1:Ntrials
+        t0rsind = find(lfptimeresamp<=vis.(visblocks{b}).trialstart(itrial),1,'last');
+        lfppsthtrialinds(:,itrial) = t0rsind + psthtli;
+    end
+
+    csdvispsth.(visblocks{b}) = NaN(length(psthtli), vis.(visblocks{b}).numtrials, Nelec-2);
+    for ii = 1:Nelec-2
+        tempcsd = csdconv(ii,:)';
+        csdvispsth.(visblocks{b})(:,:,ii) = tempcsd(lfppsthtrialinds);
+    end
+    clear tempcsd lfppsthtrialinds
+end
+toc % takes 1 min for 87 electrodes
+
+Ntrials = numel(opto.optostarttime);
+lfpoptopsthtrialinds = zeros(length(optopsthtli), Ntrials);
+for itrial = 1:Ntrials
+    t0rsind = find(lfptimeresamp<=opto.optostarttime(itrial),1,'last');
+    lfpoptopsthtrialinds(:,itrial) = t0rsind + optopsthtli;
+end
+
+csdoptopsth = NaN(length(optopsthtli), Ntrials, Nelec-2);
+tic
+for ii = 1:Nelec-2
+    tempcsd = csdconv(ii,:)';
+    csdoptopsth(:,:,ii) = tempcsd(lfpoptopsthtrialinds);
+end
+clear tempcsd psthtrialinds
+toc
+
+% sanity check
+% compare with averaging first then calculating CSD
+whichblock = 'ICwcfg1_presentations';
+blocktrialorder = vis.(whichblock).ICtrialtypes(vis.(whichblock).trialorder+1);
+tt2p = [0 111 511];
+xl = [0 200];
+yl = [ctxelecbottom ctxelectop]+1;
+figure
+for itt = 1:numel(tt2p)
+    trialsoi = blocktrialorder==tt2p(itt);
+    subplot(2,3,itt)
+imagesc(psthtli, csdelectinds, squeeze(mean( csdvispsth.(whichblock)(:,trialsoi,:),2))' );
+xlim(xl)
+ylim(yl)
+caxis([-0.025 0.025])
+set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpelecvec.location(csdelectinds), 'YDir', 'normal')
+title(tt2p(itt))
+colorbar
+
+lfpavg = squeeze(mean( convn(lfpvispsth.(whichblock)(:,trialsoi,:),kergauss', 'same') ,2))';
+csdavg = -( lfpavg(csdelectinds+1,:)-2*lfpavg(csdelectinds,:)+lfpavg(csdelectinds-1,:) )/(lfpelecspacing.^2);
+    subplot(2,3,itt+3)
+imagesc(psthtli, csdelectinds, csdavg );
+xlim(xl)
+ylim(yl)
+caxis([-0.025 0.025])
+set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpelecvec.location(csdelectinds), 'YDir', 'normal')
+title(tt2p(itt))
+colorbar
+end
+colormap jet
+
+% compare csdresamp vs csdconv
+
 %% TFR : for now, just choose one electrode in layer 2/3
+% TODO: CHOOSE THE ELECTRODE WITH THE STRONGEST SINK IN FEEDBACK PERIOD IN L2/3
 % 30 seconds and 7 GB for each electrode
 elecL23 = round(median(find(contains(lfpelecvec.location, '2/3'))));
 S = lfpresamp(elecL23,:)';
@@ -260,13 +365,16 @@ S = lfpresamp(elecL23,:)';
 [TFR_L23,tVec,fVec] = spectralevents_ts2tfr(S,1:100,1/Tres,5);
 
 
-%%%%%%%%%%%%%%%%%%%%%%%% TODO: ADD SPONTANEOUS BLOCK TO ALL PSTHs %%%%%%%%% 
-disp('TODO: ADD SPONTANEOUS BLOCK TO ALL PSTHs')
-
 tfrvispsth = struct();
 %tic
 for b = 1:numel(visblocks)
     if contains(visblocks{b}, 'spontaneous')
+        tfrvispsth.(visblocks{b}) = cell(numel(vis.(visblocks{b}).start_time),1);
+        for itrial = 1:numel(vis.(visblocks{b}).start_time)
+        trsinds = find( lfptimeresamp>=vis.(visblocks{b}).start_time(itrial) ...
+            & lfptimeresamp<=vis.(visblocks{b}).stop_time(itrial) );
+        tfrvispsth.(visblocks{b}){itrial} = TFR_L23(:,trsinds)';            
+        end
         continue
     end
 
@@ -348,6 +456,4 @@ legend(tt2p)
 save(sprintf('%sLFP_TFR_L23_probe%s.mat', pathpp, probes{iprobe}), ...
     'Tres', 'elecL23', 'fVec', 'vis', 'psthtli', 'TFRvispsth', ...
     'opto', 'optopsthtli', 'TFRoptopsth', '-v7.3')
-
-%% CSD
 
