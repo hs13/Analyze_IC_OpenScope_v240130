@@ -241,8 +241,12 @@ end
         end
         clear templfp psthtrialinds
         % toc % 4 seconds
-        nanprct=100*mean(isnan(lfpoptopsth(optopsthtli>=0&optopsthtli<1000, :,:)), 'all');
-        fprintf('%.1f%% time points are nan during opto stim\n', nanprct)
+
+        % nanprct=100*mean(isnan(lfpoptopsth(optopsthtli>=0&optopsthtli<1000, :,:)), 'all');
+        % fprintf('%.1f%% time points are nan during opto stim\n', nanprct)
+        if nnz(isnan(lfpoptopsth))>0
+            error('nan values in lfpoptopsth: this will lead to faulty TFR')
+        end
 
         %{
 % sanity check
