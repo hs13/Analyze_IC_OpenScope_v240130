@@ -1,4 +1,4 @@
-clear all; close all; clc
+clear all; close all; %%clc
 
 %addpath(genpath('/Users/hyeyoung/Documents/CODE/matnwb'))
 addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
@@ -11,7 +11,7 @@ nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions,
 
 probes = {'A', 'B', 'C', 'D', 'E'};
 
-for ises = 1:numel(nwbsessions)
+for ises = 3:numel(nwbsessions)
     clearvars -except ises datadir nwbsessions probes
     pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
     nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));
@@ -25,6 +25,10 @@ for ises = 1:numel(nwbsessions)
     for iprobe = 1:numel(probes)
         probeclk = tic;
         fprintf('%d/%d %s Probe%s\n', ises, numel(nwbsessions), nwbsessions{ises}, probes{iprobe})
+        if exist(sprintf('%sLFP1000Hz_probe%s.mat', pathpp, probes{iprobe}), 'file')
+            fprintf('LFP1000Hz_probe%s.mat already exits\n', probes{iprobe})
+            continue
+        end
 
         probeind = iprobe-1;
         fileind = find(contains({nwbfiles.name}, ['probe-' num2str(probeind)]));
@@ -522,8 +526,8 @@ legend(tt2p)
         %}
 
         save(sprintf('%sLFP_TFR_L23_probe%s.mat', pathpp, probes{iprobe}), ...
-            'Tres', 'elecL23', 'fVec', 'vis', 'psthtli', 'TFRvispsth', ...
-            'opto', 'optopsthtli', 'TFRoptopsth', '-v7.3')
+            'Tres', 'elecL23', 'fVec', 'vis', 'psthtli', 'tfrvispsth', ...
+            'opto', 'optopsthtli', 'tfroptopsth', '-v7.3')
 toc(probeclk)
     end
 end
