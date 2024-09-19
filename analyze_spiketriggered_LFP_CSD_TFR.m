@@ -1,4 +1,4 @@
-clear all; close all; %%clc
+clear all; close all; clc
 
 %addpath(genpath('/Users/hyeyoung/Documents/CODE/matnwb'))
 addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
@@ -27,7 +27,7 @@ for ises = 1:numel(nwbsessions)
     [~, fileind] = min(cellfun(@length, {nwbfiles.name}));
     nwbspikefile = fullfile([nwbfiles(fileind).folder filesep nwbfiles(fileind).name]);
     % nwbspikefile = string(nwbspikefile);
-    disp(nwbspikefile)
+    % disp(nwbspikefile)
     nwb = nwbRead(nwbspikefile); %, 'ignorecache');
 
     %% extract spike times
@@ -38,13 +38,13 @@ for ises = 1:numel(nwbsessions)
     % unit_waveform = nwb.units.waveform_mean.data.load();
     unit_wfdur = nwb.units.vectordata.get('waveform_duration').data.load();
 
-    Nneurons = length(unit_ids);
+    Nunits = length(unit_ids);
 
     % all(ismember(unit_peakch, electrode_id))
 
-    spiketimes = cell(Nneurons, 1);
+    spiketimes = cell(Nunits, 1);
     last_idx = 0;
-    for ii = 1:Nneurons
+    for ii = 1:Nunits
         unit_id = unit_ids(ii);
 
         %     assert(unit_trials_idx(i) == unit_times_idx(i), 'Expected unit boundaries to match between trials & spike_times jagged arrays')
@@ -56,12 +56,23 @@ for ises = 1:numel(nwbsessions)
         last_idx = end_idx;
     end
 
+    load( [pathpp 'postprocessed.mat'], 'Tres', 'vis', 'neuallloc' )
+    neuindV1 = find( contains(neuallloc, 'VISp') & ~contains(neuallloc, 'VISpm') );
+    Nneurons = numel(neuindV1);
+
+    load([pathpp 'info_electrodes.mat'])
+    load([pathpp 'info_units.mat'])
+    V1elec = electrode_id( contains(electrode_location, 'VISp') & ~contains(electrode_location, 'VISpm') );
+    if ~all(ismember(unit_peakch(neuindV1), V1elec))
+        error('check neuallloc')
+    end
+
     load( [pathpp 'LFP1000Hz_probeC.mat'], 'lfptimeresamp' )
-    load( [pathpp 'LFP_psth_probeC.mat'], 'Tres', 'vis' )
     stlen = round((lfptimeresamp(end))/Tres);
     spiketrain = false(stlen, Nneurons);
     for ii = 1:Nneurons
-        spiketrain(floor(spiketimes{ii}/Tres)+1, ii) = true;
+        ci = neuindV1(ii);
+        spiketrain(floor(spiketimes{ci}/Tres)+1, ii) = true;
     end
     ststart = round((vis.ICwcfg1_presentations.start_time(1))/Tres);
     stend = round((vis.ICwcfg1_presentations.stop_time(end))/Tres);
@@ -79,7 +90,6 @@ for ises = 1:numel(nwbsessions)
         fprintf('%d/%d %s Probe%s\n', ises, numel(nwbsessions), nwbsessions{ises}, probes{iprobe})
         probeclk = tic;
         load( sprintf('%sLFP1000Hz_probe%s.mat', pathpp, probes{iprobe}) )
-        load(sprintf('%spostprocessed_probe%s.mat', pathpp, probes{iprobe}), 'neuoind')
 
         % 'lfpelecid', 'lfpelecvec', 'lfptimeresamp', 'lfpresamp'
         lfpblock = lfpresamp(:,lfpstart:lfpend);
@@ -119,33 +129,45 @@ for ises = 1:numel(nwbsessions)
         stLFPprobe = NaN(Nneurons, length(trange), numel(lfpelecid));
         stCSDprobe = NaN(Nneurons, length(trange), numel(csdelectinds));
         stTFRprobe = NaN(Nneurons, length(trange), numel(fVec));
-        for ii = 1:Nneurons
-            tempstinds = find(spiketraintrimmed(:,ii))+trange;
-            tempNspikes = size(tempstinds,1);
-            tempstlfp = NaN( tempNspikes, length(trange), numel(lfpelecid) );
+        % ~2000 units per session, 7 seconds per neuron, ~1 day per session. too long. choose neurons to do this with.
+        % ~200 V1 units per session, 7 seconds per neuron, 140 min per session. 
+        for ii = 1:Nneurons 
+        % tic
+            tempspkinds = find(spiketraintrimmed(:,ii));
+            % Ncutspks = 10000;
+            % if numel(tempspkinds)>Ncutspks % randomly pick Ncutspks so that code does not run out of memory                
+            %     cutspks = randperm(tempNspikes, Ncutspks);
+            %     tempspkinds = tempspkinds(cutspks);
+            % end
+
+            tempNspikes = numel(tempspkinds);
+            tempstinds = tempspkinds+trange;
+            
+            tempstlfp = NaN( length(trange), numel(lfpelecid) );
             for e = 1:numel(lfpelecid)
                 templfp = lfpblock(e,:);
-                tempstlfp(:,:,e) = templfp(tempstinds);
+                tempstlfp(:,e) = mean(templfp(tempstinds),1);
             end
 
-            tempstcsd = NaN( tempNspikes, length(trange), numel(csdelectinds) );
+            tempstcsd = NaN( length(trange), numel(csdelectinds) );
             for e = 1:numel(csdelectinds)
                 tempcsd = csdblock(e,:);
-                tempstcsd(:,:,e) = tempcsd(tempstinds);
+                tempstcsd(:,e) = mean(tempcsd(tempstinds),1);
             end
 
-            tempsttfr = NaN( tempNspikes, length(trange), numel(fVec) );
+            tempsttfr = NaN( length(trange), numel(fVec) );
             for e = 1:numel(fVec)
                 temptfr = TFR_L23_block(e,:);
-                tempsttfr(:,:,e) = temptfr(tempstinds);
+                tempsttfr(:,e) = mean(temptfr(tempstinds), 1);
             end
 
-            stLFPprobe(ii,:,:) = mean(tempstlfp,1);
-            stCSDprobe(ii,:,:) = mean(tempstcsd,1);
-            stTFRprobe(ii,:,:) = mean(tempsttfr,1);
+            stLFPprobe(ii,:,:) = tempstlfp;
+            stCSDprobe(ii,:,:) = tempstcsd;
+            stTFRprobe(ii,:,:) = tempsttfr;
+        % toc
         end
-        save( sprintf('%sspiketriggered_LFP_CSD_TFR_probe%s.mat', pathpp, probes{iprobe}), ...
-            'stLFPprobe', 'stCSDprobe', 'stTFRprobe', '-v7.3')
+        save( sprintf('%sV1spiketriggered_LFP_CSD_TFR_probe%s.mat', pathpp, probes{iprobe}), ...
+            'neuindV1', 'stLFPprobe', 'stCSDprobe', 'stTFRprobe', '-v7.3')
         toc(probeclk)
     end
 
