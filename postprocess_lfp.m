@@ -1,3 +1,6 @@
+% 9/12 sub-631510 ProbeB
+% Warning: cortex electrodes are not consecutive -- check 
+
 clear all; close all; %%clc
 
 %addpath(genpath('/Users/hyeyoung/Documents/CODE/matnwb'))
@@ -11,7 +14,7 @@ nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions,
 
 probes = {'A', 'B', 'C', 'D', 'E'};
 
-for ises = 3:numel(nwbsessions)
+for ises = 9:numel(nwbsessions)
     clearvars -except ises datadir nwbsessions probes
     pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
     nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));

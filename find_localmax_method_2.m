@@ -41,6 +41,23 @@ function [spectralEvents] = find_localmax_method_2(eventBand, thrFOM, tVec, fVec
 % within-band, suprathreshold activity in any given trial will render
 % an event.
 
+% Initialize general data parameters
+eventBand_inds = fVec>=eventBand(1) & fVec<=eventBand(2); %Logical vector representing indices of freq vector within eventBand
+if size(eventBand_inds,1)~=length(eventBand_inds)
+    eventBand_inds = eventBand_inds'; %Transpose so that the dimensions correspond with the frequency-domain dimension of the TFR
+end
+flength = size(TFR,1); %Number of elements in discrete frequency spectrum
+tlength = size(TFR,2); %Number of points in time
+numTrials = size(TFR,3); %Number of trials
+classes = unique(classLabels);
+medianpower = median(reshape(TFR, size(TFR,1), size(TFR,2)*size(TFR,3)), 2); %Median power at each frequency across all trials
+thr = thrFOM*medianpower; %Spectral event threshold for each frequency value
+
+% Validate consistency of parameter dimensions
+if flength~=length(fVec) || tlength~=length(tVec) || numTrials~=length(classLabels)
+  error('Mismatch in input parameter dimensions!')
+end
+
 % spectralEvents: 12 column matrix for storing local max event metrics: trial
 % index, hit/miss, maxima frequency, lowerbound frequency, upperbound
 % frequency, frequency span, maxima timing, event onset timing, event
