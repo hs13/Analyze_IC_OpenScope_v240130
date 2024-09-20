@@ -1,4 +1,4 @@
-clear all; close all; clc
+clear all; close all; %clc
 
 %addpath(genpath('/Users/hyeyoung/Documents/CODE/matnwb'))
 addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
@@ -9,11 +9,14 @@ nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
 nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
 
-probes = {'A', 'B', 'C', 'D', 'E'};
+% probes = {'A', 'B', 'C', 'D', 'E'};
+% visareas = {'AM', 'PM', 'V1', 'LM', 'AL', 'RL'};
+
+probes = {'D', 'E'};
 
 for ises = 1:numel(nwbsessions)
-    sesclk = tic;
     clearvars -except ises datadir nwbsessions probes
+    sesclk = tic;
     pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
     nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));
 
@@ -68,18 +71,20 @@ for ises = 1:numel(nwbsessions)
     end
 
     load( [pathpp 'LFP1000Hz_probeC.mat'], 'lfptimeresamp' )
+    ststart = floor((vis.ICwcfg1_presentations.start_time(1))/Tres)+1;
+    stend = floor((vis.ICwcfg1_presentations.stop_time(end))/Tres)+1;
     stlen = round((lfptimeresamp(end))/Tres);
+    
     spiketrain = false(stlen, Nneurons);
     for ii = 1:Nneurons
         ci = neuindV1(ii);
         spiketrain(floor(spiketimes{ci}/Tres)+1, ii) = true;
     end
-    ststart = round((vis.ICwcfg1_presentations.start_time(1))/Tres);
-    stend = round((vis.ICwcfg1_presentations.stop_time(end))/Tres);
     spiketrain = spiketrain(ststart:stend,:);
 
-    lfpstart = floor((vis.ICwcfg1_presentations.start_time(1)-lfptimeresamp(1))/Tres)+1;
-    lfpend = floor((vis.ICwcfg1_presentations.stop_time(end)-lfptimeresamp(1))/Tres)+1;
+    lfpts1 = floor((lfptimeresamp(1))/Tres)+1;
+    lfpstart = ststart-lfpts1;
+    lfpend = stend-lfpts1;
     if stend-ststart ~= lfpend-lfpstart
         error('mismatch between spike train length and lfp length')
     end
@@ -88,6 +93,11 @@ for ises = 1:numel(nwbsessions)
     %% spike triggered CSD and TFR
     for iprobe = 1:numel(probes)
         fprintf('%d/%d %s Probe%s\n', ises, numel(nwbsessions), nwbsessions{ises}, probes{iprobe})
+        if exist(sprintf('%sV1spiketriggered_LFP_CSD_TFR_probe%s.mat', pathpp, probes{iprobe}), 'file')
+            fprintf('V1spiketriggered_LFP_CSD_TFR_probe%s.mat already exits\n', probes{iprobe})
+            continue
+        end
+
         probeclk = tic;
         load( sprintf('%sLFP1000Hz_probe%s.mat', pathpp, probes{iprobe}) )
 
