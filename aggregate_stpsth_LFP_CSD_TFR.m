@@ -10,7 +10,7 @@ visctxareas = {'VISam', 'VISpm', 'VISp', 'VISl', 'VISal', 'VISrl'};
 
 lowpassopt = true;
 whichneuarea = 'V1';
-lfpareas = {'V1', 'LM'};%
+lfpareas = {'V1', 'LM'};%, 'AL'};%
 whichblock = 'ICwcfg1_presentations';
 
 %% spike triggered CSD during visual presentation period of each trial type
@@ -287,9 +287,9 @@ VISlayers = {'1', '2/3', '4', '5', '6a', '6b'};
 xcols = jet(numel(VISlayers));
 
 figure
-for iic = 1:2
-    for neuopt = 1:2
-        subplot(2,2,2*(iic-1)+neuopt)
+for iic = 1:3
+    for neuopt = 1:3
+        subplot(3,3,3*(iic-1)+neuopt)
         hold all
         for ises = 1:Nsessions
             if isempty(stCSDvisagg{a,ises})
@@ -298,6 +298,7 @@ for iic = 1:2
             switch iic
                 case 1
                     typi = vistrialtypes==106;
+                    ttdesc = 'I_C_1';
                     switch neuopt
                         case 1
                             neutitle = 'IC1-encoder';
@@ -306,11 +307,16 @@ for iic = 1:2
                             neutitle = 'BR+TL';
                             neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.indin1 | ...
                                 ICsigV1agg{ises}.ICwcfg1_presentations.indin3;
+                        case 3
+                            neutitle = 'inducerencoder1+3';
+                            neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.indenc1 | ...
+                                ICsigV1agg{ises}.ICwcfg1_presentations.indenc3;
                         otherwise
                             error('neuopt %.0f not recognized', neuopt)
                     end
                 case 2
                     typi = vistrialtypes==111;
+                    ttdesc = 'I_C_2';
                     switch neuopt
                         case 1
                             neutitle = 'IC2-encoder';
@@ -319,38 +325,76 @@ for iic = 1:2
                             neutitle = 'BL+TR';
                             neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.indin2 | ...
                                 ICsigV1agg{ises}.ICwcfg1_presentations.indin4;
+                        case 3
+                            neutitle = 'inducerencoder2+4';
+                            neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.indenc2 | ...
+                                ICsigV1agg{ises}.ICwcfg1_presentations.indenc4;
                         otherwise
                             error('neuopt %.0f not recognized', neuopt)
                     end
+                case 3
+                    typi = vistrialtypes==0;
+                    ttdesc = 'Blank';
+                    switch neuopt
+                        case 1
+                            neutitle = 'IC-encoder';
+                            neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.ICencoder;
+                        case 2
+                            neutitle = 'seg. resp.';
+                            neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.indin1 | ...
+                                ICsigV1agg{ises}.ICwcfg1_presentations.indin2 | ...
+                                ICsigV1agg{ises}.ICwcfg1_presentations.indin3 | ...
+                                ICsigV1agg{ises}.ICwcfg1_presentations.indin4;
+                        case 3
+                            neutitle = 'inducerencoder';
+                            neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.indenc1 | ...
+                                ICsigV1agg{ises}.ICwcfg1_presentations.indenc2 | ...
+                                ICsigV1agg{ises}.ICwcfg1_presentations.indenc3 | ...
+                                ICsigV1agg{ises}.ICwcfg1_presentations.indenc4;
+                        otherwise
+                            error('neuopt %.0f not recognized', neuopt)
+                    end
+                otherwise
+                            error('iic %d not recognized', iic)
             end
-            lfpeleclocation = lfpelecvecvisagg{a,ises}.location;
-            Nelec = numel(lfpeleclocation);
-            csdelectinds = 2:Nelec-1;
 
-            ctxelec = contains(lfpeleclocation, 'VIS');
+            Nelec = numel(lfpelecvecvisagg{a,ises}.location);
+            csdelectinds = 2:Nelec-1;
+            csdeleclocation = lfpelecvecvisagg{a,ises}.location(csdelectinds);
+
+            ctxelec = contains(csdeleclocation, 'VIS');
             ctxelecinds = find(ctxelec);
             ctxelectop = find(ctxelec, 1, 'last');
             ctxelecbottom = find(ctxelec, 1, 'first');
-            [C,ya,yc]=unique(lfpeleclocation(ctxelec));
+            [C,ya,yc]=unique(csdeleclocation(ctxelec));
             xvec = -(find(ctxelec)-ctxelecbottom)/(ctxelectop-ctxelecbottom);
 
+            switch lfpareas{a}
+                case 'V1'
             yl = 0.6*[-1 1];
+                case 'LM'
+            yl = 0.25*[-1 1];
+                otherwise
+                    yl = ylim;
+            end 
+
 
             hold on
             for il = 1:numel(VISlayers)
-                xoi = contains(lfpeleclocation(ctxelec), VISlayers{il});
+                xoi = contains(csdeleclocation(ctxelec), VISlayers{il});
+                layleg = unique(csdeleclocation(ctxelecinds(xoi)));
                 plot( xvec(xoi), ...
-                    squeeze(nanmean(stCSDvisagg{a,ises}{typi}(neuingroup, sttrange<=0 & sttrange>-10,ctxelecinds(xoi)), 2)), ...
+                    squeeze(nanmean(stCSDvisagg{a,ises}{typi}(neuingroup, sttrange<=0 & sttrange>-1,ctxelecinds(xoi)), 2)), ...
                     'o', 'Color', xcols(il,:), 'MarkerFaceColor', xcols(il,:))
-                text(0, yl(2)-0.06*range(yl)*(il-1), VISlayers{il}, ...
+                text(0, yl(2)-0.06*range(yl)*(il-1), layleg, ... %VISlayers{il}, ...
                     'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'Color', xcols(il,:), 'FontSize', fs)
             end
         end
             set(gca, 'FontSize',fs)
-            ylabel('stCSD -50~0ms from spike')
+            ylabel('stCSD 0ms from spike')
             xlabel('electrode')
             %legend(VISplayers)
             ylim(yl)
-            title(sprintf('IC%d trials %s', iic, neutitle))        
+            title(sprintf('%s trials %s', ttdesc, neutitle))        
     end
 end

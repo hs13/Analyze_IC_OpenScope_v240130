@@ -304,6 +304,7 @@ ranksum(ICL23sink, segL23sink)
 
 
 %%
+iprobe = find(strcmp(probes, 'D'));
 fs=14;
 VISlayers = {'1', '2/3', '4', '5', '6a', '6b'};
 xcols = jet(numel(VISlayers));
@@ -318,6 +319,7 @@ for neuopt = 1:2
             neutitle = 'segment responder';
             neuingroup = ICsigall.ICwcfg1_presentations.indin1 | ICsigall.ICwcfg1_presentations.indin2 | ...
                 ICsigall.ICwcfg1_presentations.indin3 | ICsigall.ICwcfg1_presentations.indin4;
+            neuingroup = ICsigall.ICwcfg1_presentations.inducerencoder;
         otherwise
             error('neuopt %.0f not recognized', neuopt)
     end
@@ -330,37 +332,83 @@ for neuopt = 1:2
         sesneuoi = neuingroup(sesneuall==ises);
         sesneuindV1 = sesneuoi(neuindV1agg{ises});
 
-        lfpeleclocation = lfpelecvecagg{iprobe,ises}.location;
-        Nelec = numel(lfpeleclocation);
+        Nelec = numel(lfpelecvecagg{iprobe,ises}.location);
         csdelectinds = 2:Nelec-1;
+        csdeleclocation = lfpelecvecagg{iprobe,ises}.location(csdelectinds);
 
-        ctxelec = contains(lfpeleclocation, 'VIS');
+        ctxelec = contains(csdeleclocation, 'VIS');
         ctxelecinds = find(ctxelec);
         ctxelectop = find(ctxelec, 1, 'last');
         ctxelecbottom = find(ctxelec, 1, 'first');
-        [C,ya,yc]=unique(lfpeleclocation(ctxelec));
+        [C,ya,yc]=unique(csdeleclocation(ctxelec));
+
+        % yl = 0.02*[-1 1];
+        % yl = 0.3*[-1 1];
+        % yl = ylim;
+        % yl = max(abs(yl))*[-1 1];
 
         xvec = -(find(ctxelec)-ctxelecbottom)/(ctxelectop-ctxelecbottom);
         for il = 1:numel(VISlayers)
-            xoi = contains(lfpeleclocation(ctxelec), VISlayers{il});
+            xoi = contains(csdeleclocation(ctxelec), VISlayers{il});
             plot( xvec(xoi), ...
-                squeeze(nanmean(stCSDagg{iprobe,ises}(sesneuindV1, trange<=0 & trange>-100,ctxelecinds(xoi)), 2)), ...
+                squeeze(nanmean(stCSDagg{iprobe,ises}(sesneuindV1, trange<=0 & trange>-1,ctxelecinds(xoi)), 2)), ...
                 'o', 'Color', [xcols(il,:) 0.2])%, 'MarkerFaceColor', [xcols(il,:)])
             text(0, yl(2)-0.06*range(yl)*(il-1), VISlayers{il}, ...
                 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'Color', xcols(il,:), 'FontSize', fs)
         end
     end
-    if neuopt==1
-        % yl = 0.05*[-1 1];
-        % yl = 0.3*[-1 1];
-        yl = ylim;
-        yl = abs(max(yl))*[-1 1];
-    end
     set(gca, 'FontSize',fs)
     ylabel('stCSD -50~0ms from spike')
     xlabel('electrode')
     %legend(VISplayers)
+    if neuopt==1
+        yl = ylim;
+    end
     ylim(yl)
     title(neutitle)
 end
 
+
+%%
+figure
+for neuopt = 1:3
+    switch neuopt
+        case 1
+            neutitle = 'IC-encoder';
+            neuingroup = ICsigall.ICwcfg1_presentations.ICencoder;
+        case 2
+            neutitle = 'segment responder';
+            neuingroup = ICsigall.ICwcfg1_presentations.indin1 | ICsigall.ICwcfg1_presentations.indin2 | ...
+                ICsigall.ICwcfg1_presentations.indin3 | ICsigall.ICwcfg1_presentations.indin4;
+        case 3
+            neutitle = 'inducer-encoder';
+            neuingroup = ICsigall.ICwcfg1_presentations.inducerencoder;
+        otherwise
+            error('neuopt %.0f not recognized', neuopt)
+    end
+    subplot(1,3,neuopt)
+    hold all
+    neustTFR = [];
+    for ises = 1:Nsessions
+        if isempty(stTFRagg{iprobe,ises})
+            continue
+        end
+        sesneuoi = neuingroup(sesneuall==ises);
+        sesneuindV1 = sesneuoi(neuindV1agg{ises});
+
+        tempsttfr = squeeze(mean(stTFRagg{iprobe,ises}(sesneuindV1, trange<=25 & trange>-25,:), 2));
+        % neustTFR = cat(1, neustTFR, tempsttfr);
+        tempmeantfr = nanmean(squeeze(mean(stTFRagg{iprobe,ises}(:, trange<=25 & trange>-25,:), 2)), 1);
+        neustTFR = cat(1, neustTFR, log2(tempsttfr./tempmeantfr));
+    end
+    plot(fVec, neustTFR)
+    plot(fVec, mean(neustTFR,1), 'b-', 'LineWidth', 2)
+    plot([fVec(1) fVec(end)],[0 0], 'k--', 'LineWidth', 1)
+    set(gca, 'FontSize',fs)
+    ylabel('stTFR -50~0ms from spike')
+    xlabel('frequency')
+    %legend(VISplayers)
+    ylim(0.5*[-1 1])
+    xlim([7 80])
+    title(neutitle)
+end
