@@ -2,89 +2,355 @@ datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
 nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
+Nsessions = numel(nwbsessions);
 
-%% display V1 probe
-for ises = 1:numel(nwbsessions)
-    pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
-    load([pathpp 'info_electrodes.mat'])
-    V1probes = electrode_probeid( contains(electrode_location, 'VISp') & ~contains(electrode_location, 'VISpm') );
-    disp(nwbsessions{ises})
-    disp(unique(V1probes))
-end
+probes = {'A', 'B', 'C', 'D', 'E', 'F'};
+visareas = {'AM', 'PM', 'V1', 'LM', 'AL', 'RL'};
+visctxareas = {'VISam', 'VISpm', 'VISp', 'VISl', 'VISal', 'VISrl'};
+
+lowpassopt = true;
+whichneuarea = 'V1';
+lfpareas = {'V1', 'LM'};%
+whichblock = 'ICwcfg1_presentations';
 
 %% spike triggered CSD during visual presentation period of each trial type
-probes = {'A', 'B', 'C', 'D', 'E', 'F'};
-for ises = 1:numel(nwbsessions)
-    clearvars -except ises datadir nwbsessions probes
-    sesclk = tic;
+stCSDvisagg = cell(numel(lfpareas), Nsessions);
+lfpelecvecvisagg  = cell(numel(lfpareas), Nsessions);
+ctxelecindsvisagg = cell(numel(lfpareas), Nsessions);
+elecL23visagg = zeros(numel(lfpareas), Nsessions);
+ICsigV1agg = cell(1, Nsessions);
+
+for ises = 1:Nsessions
+    tic
     pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
     load([pathpp 'info_electrodes.mat'])
-    V1probes = electrode_probeid( contains(electrode_location, 'VISp') & ~contains(electrode_location, 'VISpm') );
-    if numel(unique(V1probes))>1
-        error('this session has more than one V1 probe')
-    end
-    iprobe = mode(V1probes)+1;
 
-    %for iprobe = 1:numel(probes)
-    fprintf('%d/%d %s Probe%s\n', ises, numel(nwbsessions), nwbsessions{ises}, probes{iprobe})
-    if ~exist(sprintf('%sLFP_CSD_probe%s.mat', pathpp, probes{iprobe}), 'file')
-        fprintf('LFP_CSD_probe%s.mat does not exit!!!\n', probes{iprobe})
-        continue
+    if strcmp(whichneuarea, 'V1')
+        neuareaprobeinds = 1+electrode_probeid( contains(electrode_location, 'VISp') & ~contains(electrode_location, 'VISpm') );
+    else
+        neuarea = visctxareas{strcmp(visareas, whichneuarea)};
+        neuareaprobeinds = 1+electrode_probeid( contains(electrode_location, neuarea) );
     end
-    load(sprintf('%sLFP_CSD_probe%s.mat', pathpp, probes{iprobe}))
-    load(sprintf('%spostprocessed_probe%s.mat', pathpp, probes{iprobe}))
+    if numel(unique(neuareaprobeinds))>1
+        warning('this session has more than one %s probe', neuarea)
+    end
+    neuprobe = mode(neuareaprobeinds);
 
-    whichblock = 'ICwcfg1_presentations';
+
+    load(sprintf('%svisresponses_probe%s.mat', pathpp, probes{neuprobe} ))
+    ICsigV1agg{ises} = ICsig;
+
     blocksplit = strsplit(whichblock);
     blockname = blocksplit{1};
-    if isfield(vis.(whichblock), 'ICtrialtypes')
-        trialorder = vis.(whichblock).ICtrialtypes(vis.(whichblock).trialorder+1);
-    else
-        trialorder = vis.(whichblock).trialorder;
-    end
-    vistrialtypes = unique(trialorder);
-    Nneu = size(psth.(whichblock), 3);
-    tloi = psthtli>=0 & psthtli<400;
 
-    %sttrange = -200:200; % 160s for each trialtype
-    sttrange = -100:100; % 80s for each trialtype
-    stCSDvisprobe = cell(size(vistrialtypes));
-    for typi = 1:numel(vistrialtypes)
-        tic
-        stCSDvisprobe{typi} = NaN(Nneu, length(sttrange), numel(csdelectinds));
-        trialsoi = trialorder==vistrialtypes(typi);
-        for t = 1:length(sttrange)
-            temptloind = find(tloi)+sttrange(t);
-            tempcsdpsth = reshape( csdvispsth.(whichblock)(temptloind, trialsoi, :), nnz(tloi)*nnz(trialsoi), numel(csdelectinds));
-            for ci = 1:Nneu
-                temppsth = reshape( psth.(whichblock)(tloi, trialsoi, ci), [],1 );
-                stCSDvisprobe{typi}(ci,t,:) = mean(tempcsdpsth(temppsth,:),1);
-            end
+    for a = 1:numel(lfpareas)
+        lfpareaprobeinds = 1+electrode_probeid( contains(electrode_location, 'VISp') & ~contains(electrode_location, 'VISpm') );
+        if strcmp(lfpareas{a}, 'V1')
+            lfpareaprobeinds = 1+electrode_probeid( contains(electrode_location, 'VISp') & ~contains(electrode_location, 'VISpm') );
+        else
+            lfparea = visctxareas{strcmp(visareas, lfpareas{a})};
+            lfpareaprobeinds = 1+electrode_probeid( contains(electrode_location, lfparea) );
         end
-        toc
+        if numel(unique(lfpareaprobeinds))>1
+            warning('this session has more than one %s probe', lfpareas{a})
+        end
+        lfpprobe = mode(lfpareaprobeinds);
+
+    fprintf('%d/%d %s %s Probe%s\n', ises, numel(nwbsessions), nwbsessions{ises}, lfpareas{a}, probes{lfpprobe})
+    if ~exist(sprintf('%sLFP_CSD_probe%s.mat', pathpp, probes{lfpprobe}), 'file')
+        fprintf('LFP_CSD_probe%s.mat does not exit!!!\n', probes{lfpprobe})
+        continue
     end
-    %end
-    save( sprintf('%sV1_stCSD%s_probe%s.mat', pathpp, blockname, probes{iprobe}), ...
-        'lfpelecspacing', 'csdelectinds', 'vistrialtypes', 'sttrange', 'stCSDvisprobe', '-v7.3')
-    toc(sesclk)
+
+    load(sprintf('%sLFP1000Hz_probe%s.mat', pathpp, probes{lfpprobe}), 'lfpelecvec')
+    ctxelec = contains(lfpelecvec.location, 'VIS');
+    ctxelectop = find(ctxelec, 1, 'last');
+    ctxelecbottom = find(ctxelec, 1, 'first');
+    if ~isequal(ctxelecbottom:ctxelectop, find(ctxelec)')
+        warning('%d/%d %s cortex electrodes are not consecutive -- check', ises, Nsessions, nwbsessions{ises})
+    end
+    lfpelecvecvisagg{a,ises} = lfpelecvec;
+    ctxelecindsvisagg{a,ises} = ctxelec;
+
+    load(sprintf('%sLFP_TFR_L23_probe%s.mat', pathpp, probes{lfpprobe}), 'elecL23', 'fVec')
+    if ~isempty(elecL23)
+        elecL23visagg(a,ises) = elecL23;
+    else
+        elecL23visagg(a,ises) = 0;
+    end
+
+    if lowpassopt
+        stpsthCSDfn = sprintf('%s%s_stCSD%s_lowpassprobe%s.mat', pathpp, whichneuarea, blockname, probes{lfpprobe});
+    else
+        stpsthCSDfn = sprintf('%s%s_stCSD%s_probe%s.mat', pathpp, whichneuarea, blockname, probes{lfpprobe});
+    end
+    %     'lfpelecspacing', 'csdelectinds', 'vistrialtypes', 'sttrange', 'stCSDvisprobe'
+    load(stpsthCSDfn)
+    stCSDvisagg{a,ises} = stCSDvisprobe;
+    end
+
+    toc
 end
 
+
+%% IC1 trials: IC-encoder vs segment responder CSD averaged in each session
+a = find(strcmp(lfpareas,'LM'));
+
+typi = vistrialtypes==106;
+figure
+for ises = 1:Nsessions
+    if isempty(stCSDvisagg{ises})
+        continue
+    end
+    for neuopt = 1:2
+        switch neuopt
+            case 1
+                neutitle = 'IC1-encoder';
+                neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.ICencoder1;
+            case 2
+                neutitle = 'BR+TL';
+                neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.indin1 | ...
+                    ICsigV1agg{ises}.ICwcfg1_presentations.indin3;
+            otherwise
+                error('neuopt %.0f not recognized', neuopt)
+        end
+
+        lfpeleclocation = lfpelecvecvisagg{a,ises}.location;
+        Nelec = numel(lfpeleclocation);
+        csdelectinds = 2:Nelec-1;
+
+        ctxelec = contains(lfpeleclocation, 'VIS');
+        ctxelectop = find(ctxelec, 1, 'last');
+        ctxelecbottom = find(ctxelec, 1, 'first');
+        yl = [ctxelecbottom ctxelectop]+.5;
+
+        subplot(4,6,2*(ises-1)+neuopt)
+        hold all
+        imagesc(sttrange, csdelectinds, squeeze(mean(stCSDvisagg{a,ises}{typi}(neuingroup,:,:),1))' )
+        scatter(0, elecL23visagg(a,ises), 50, 'w*', 'linewidth', 1)
+        set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpeleclocation(csdelectinds), 'YDir', 'normal')
+        title(sprintf('Session%d %s n=%d %s CSD', ises, neutitle, nnz(neuingroup), lfpareas{a}))
+        ylim(yl)
+        xlim([sttrange(1) sttrange(end)])
+        if neuopt==1
+            cl = caxis;
+            cl = range(cl)/2 *[-1 1];
+        end
+        cl = 0.015*[-1 1];
+        caxis(cl)
+        colorbar
+    end
+end
+colormap jet
+
+% %% IC2 trials: IC-encoder vs segment responder CSD averaged in each session
+typi = vistrialtypes==111;
+figure
+for ises = 1:Nsessions
+    if isempty(stCSDvisagg{ises})
+        continue
+    end
+    for neuopt = 1:2
+        switch neuopt
+            case 1
+                neutitle = 'IC2-encoder';
+                neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.ICencoder2;
+            case 2
+                neutitle = 'BL+TR';
+                neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.indin2 | ...
+                    ICsigV1agg{ises}.ICwcfg1_presentations.indin4;
+            otherwise
+                error('neuopt %.0f not recognized', neuopt)
+        end
+
+        lfpeleclocation = lfpelecvecvisagg{a,ises}.location;
+        Nelec = numel(lfpeleclocation);
+        csdelectinds = 2:Nelec-1;
+
+        ctxelec = contains(lfpeleclocation, 'VIS');
+        ctxelectop = find(ctxelec, 1, 'last');
+        ctxelecbottom = find(ctxelec, 1, 'first');
+        yl = [ctxelecbottom ctxelectop]+.5;
+
+        subplot(4,6,2*(ises-1)+neuopt)
+        hold all
+        imagesc(sttrange, csdelectinds, squeeze(mean(stCSDvisagg{a,ises}{typi}(neuingroup,:,:),1))' )
+        scatter(0, elecL23visagg(a,ises), 50, 'w*', 'linewidth', 1)
+        set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpeleclocation(csdelectinds), 'YDir', 'normal')
+        title(sprintf('Session%d %s n=%d %s CSD', ises, neutitle, nnz(neuingroup), lfpareas{a}))
+        ylim(yl)
+        xlim([sttrange(1) sttrange(end)])
+        if neuopt==1
+            cl = caxis;
+            cl = range(cl)/2 *[-1 1];
+        end
+        cl = 0.015*[-1 1];
+        caxis(cl)
+        colorbar
+    end
+end
+colormap jet
+
+
+%% IC-encoder vs segment responder V1L23 CSD -50~0ms relative to spike
+ICsigV1all = cat(1, ICsigV1agg{:} );
+ICwcfg1sigV1all = cat(1, ICsigV1all.ICwcfg1_presentations);
+NneuV1all = length(cat(1,ICwcfg1sigV1all.ICencoder));
+
+stCSDpre50V1L23 = NaN(NneuV1all,numel(vistrialtypes));
+neucnt = 0;
+for ises = 1:Nsessions
+    if isempty(stCSDvisagg{a,ises})
+        continue
+    end    
+    tempneuses = neucnt+1 : neucnt+size(stCSDvisagg{a,ises}{1},1);
+    for typi = 1:numel(vistrialtypes)
+    stCSDpre50V1L23(tempneuses, typi) = mean(stCSDvisagg{a,ises}{typi}(:, ...
+        sttrange<=0 & sttrange>-50,elecL23visagg(a,ises) ), 2);
+    end
+    neucnt = neucnt + size(stCSDvisagg{a,ises}{typi},1);
+end
+
+if neucnt ~= NneuV1all
+    error('not all neurons accounted for')
+end
+
+neugrousoi = {'ICencoder1', 'ICencoder2', 'indin1', 'indin2', 'indin3', 'indin4'};
+stCSDpre50 = struct();
+for g = 1:numel(neugrousoi)
+    neuoi = cat(1,ICwcfg1sigV1all.(neugrousoi{g}));
+    stCSDpre50.(neugrousoi{g}) =  stCSDpre50V1L23(neuoi,:);
+end
+
+IC1IC1 = stCSDpre50.ICencoder1(:,vistrialtypes==106);
+IC1SR = cat(1,stCSDpre50.indin1(:,vistrialtypes==106),stCSDpre50.indin3(:,vistrialtypes==106));
+IC2IC2 = stCSDpre50.ICencoder2(:,vistrialtypes==111);
+IC2SR = cat(1,stCSDpre50.indin2(:,vistrialtypes==111),stCSDpre50.indin3(:,vistrialtypes==111));
+
+ranksum(IC1IC1, IC1SR)
+ranksum(IC2IC2, IC2SR)
+ranksum([IC1IC1; IC2IC2], [IC1SR; IC2SR])
+
+figure
+hold all
+h=histogram([IC1SR; IC2SR]);%, 'binwidth');
+histogram([IC1IC1; IC2IC2], 'BinWidth', h.BinWidth)
+
+
+%% IC-encoder vs segment responder V1L4 CSD -50~0ms relative to spike
+ICsigV1all = cat(1, ICsigV1agg{:} );
+ICwcfg1sigV1all = cat(1, ICsigV1all.ICwcfg1_presentations);
+NneuV1all = length(cat(1,ICwcfg1sigV1all.ICencoder));
+
+stCSDpre50V1L4 = NaN(NneuV1all,numel(vistrialtypes));
+neucnt = 0;
+for ises = 1:Nsessions
+    if isempty(stCSDvisagg{a,ises})
+        continue
+    end    
+    elecsL4 = strcmp(lfpelecvecvisagg{a,ises}.location, 'VISp4');
+    tempneuses = neucnt+1 : neucnt+size(stCSDvisagg{a,ises}{1},1);
+    for typi = 1:numel(vistrialtypes)
+    stCSDpre50V1L4(tempneuses, typi) = mean(stCSDvisagg{a,ises}{typi}(:, sttrange<=0 & sttrange>-50,elecsL4 ), [2 3]);
+    end
+    neucnt = neucnt + size(stCSDvisagg{a,ises}{typi},1);
+end
+
+if neucnt ~= NneuV1all
+    error('not all neurons accounted for')
+end
+
+neugrousoi = {'ICencoder1', 'ICencoder2', 'indin1', 'indin2', 'indin3', 'indin4'};
+stCSDpre50 = struct();
+for g = 1:numel(neugrousoi)
+    neuoi = cat(1,ICwcfg1sigV1all.(neugrousoi{g}));
+    stCSDpre50.(neugrousoi{g}) =  stCSDpre50V1L4(neuoi,:);
+end
+
+IC1IC1 = stCSDpre50.ICencoder1(:,vistrialtypes==106);
+IC1SR = cat(1,stCSDpre50.indin1(:,vistrialtypes==106),stCSDpre50.indin3(:,vistrialtypes==106));
+IC2IC2 = stCSDpre50.ICencoder2(:,vistrialtypes==111);
+IC2SR = cat(1,stCSDpre50.indin2(:,vistrialtypes==111),stCSDpre50.indin3(:,vistrialtypes==111));
+
+ranksum(IC1IC1, IC1SR)
+ranksum(IC2IC2, IC2SR)
+ranksum([IC1IC1; IC2IC2], [IC1SR; IC2SR])
+
+figure
+hold all
+h=histogram([IC1SR; IC2SR]);%, 'binwidth');
+histogram([IC1IC1; IC2IC2], 'BinWidth', h.BinWidth)
+
 %%
-load(sprintf('%sLFP1000Hz_probe%s.mat', pathpp, probes{iprobe}), 'lfpelecvec')
-ctxelec = contains(lfpelecvec.location, 'VIS');
-ctxelectop = find(ctxelec, 1, 'last');
-ctxelecbottom = find(ctxelec, 1, 'first');
-yl = [ctxelecbottom ctxelectop]+.5;
-lfpeleclocation = lfpelecvec.location;
-neurandord = randperm(Nneu);
-figure; 
-%imagesc(trange, csdelectinds, squeeze(nanmean(stCSDvisprobe{typi},1))')
-for ii = 1:32
-    ci = neurandord(ii);
-    subplot(4,8,ii)
-imagesc(sttrange, csdelectinds, squeeze(stCSDvisprobe{typi}(ci,:,:))')
-set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpeleclocation(csdelectinds), 'YDir', 'normal')
-caxis([-0.015 0.015])
-ylim(yl)
-xlim([-100 100])
+fs=14;
+VISlayers = {'1', '2/3', '4', '5', '6a', '6b'};
+xcols = jet(numel(VISlayers));
+
+figure
+for iic = 1:2
+    for neuopt = 1:2
+        subplot(2,2,2*(iic-1)+neuopt)
+        hold all
+        for ises = 1:Nsessions
+            if isempty(stCSDvisagg{a,ises})
+                continue
+            end
+            switch iic
+                case 1
+                    typi = vistrialtypes==106;
+                    switch neuopt
+                        case 1
+                            neutitle = 'IC1-encoder';
+                            neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.ICencoder1;
+                        case 2
+                            neutitle = 'BR+TL';
+                            neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.indin1 | ...
+                                ICsigV1agg{ises}.ICwcfg1_presentations.indin3;
+                        otherwise
+                            error('neuopt %.0f not recognized', neuopt)
+                    end
+                case 2
+                    typi = vistrialtypes==111;
+                    switch neuopt
+                        case 1
+                            neutitle = 'IC2-encoder';
+                            neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.ICencoder2;
+                        case 2
+                            neutitle = 'BL+TR';
+                            neuingroup = ICsigV1agg{ises}.ICwcfg1_presentations.indin2 | ...
+                                ICsigV1agg{ises}.ICwcfg1_presentations.indin4;
+                        otherwise
+                            error('neuopt %.0f not recognized', neuopt)
+                    end
+            end
+            lfpeleclocation = lfpelecvecvisagg{a,ises}.location;
+            Nelec = numel(lfpeleclocation);
+            csdelectinds = 2:Nelec-1;
+
+            ctxelec = contains(lfpeleclocation, 'VIS');
+            ctxelecinds = find(ctxelec);
+            ctxelectop = find(ctxelec, 1, 'last');
+            ctxelecbottom = find(ctxelec, 1, 'first');
+            [C,ya,yc]=unique(lfpeleclocation(ctxelec));
+            xvec = -(find(ctxelec)-ctxelecbottom)/(ctxelectop-ctxelecbottom);
+
+            yl = 0.6*[-1 1];
+
+            hold on
+            for il = 1:numel(VISlayers)
+                xoi = contains(lfpeleclocation(ctxelec), VISlayers{il});
+                plot( xvec(xoi), ...
+                    squeeze(nanmean(stCSDvisagg{a,ises}{typi}(neuingroup, sttrange<=0 & sttrange>-10,ctxelecinds(xoi)), 2)), ...
+                    'o', 'Color', xcols(il,:), 'MarkerFaceColor', xcols(il,:))
+                text(0, yl(2)-0.06*range(yl)*(il-1), VISlayers{il}, ...
+                    'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'Color', xcols(il,:), 'FontSize', fs)
+            end
+        end
+            set(gca, 'FontSize',fs)
+            ylabel('stCSD -50~0ms from spike')
+            xlabel('electrode')
+            %legend(VISplayers)
+            ylim(yl)
+            title(sprintf('IC%d trials %s', iic, neutitle))        
+    end
 end

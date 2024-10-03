@@ -74,8 +74,15 @@ save(['G:\My Drive\RESEARCH\ICexpts_revision23\openscope_pupilarea_', whichICblo
     'ttpupilposx', 'ttpupilposy', 'ttpupilareaz', 'trialpupilareazavg')
 
 %% 'ttpupilposx', 'ttpupilposy', 'ttpupilareaz', 'trialpupilareazavg' all have visual degrees as units
-drivepath = '/Users/hyeyoung/Library/CloudStorage/GoogleDrive-shinehyeyoung@gmail.com/My Drive/RESEARCH/ICexpts_revision23/';
-codepath = '/Users/hyeyoung/Documents/CODE/';
+if ismac
+    codepath = '/Users/hyeyoung/Documents/CODE/';
+    drivepath = '/Users/hyeyoung/Library/CloudStorage/GoogleDrive-shinehyeyoung@gmail.com/My Drive/RESEARCH/ICexpts_revision23/';
+    fs=18;
+else
+    codepath = 'C:\Users\USER\GitHub\';
+    drivepath = 'G:\My Drive\RESEARCH\ICexpts_revision23\';
+    fs=12;
+end
 addpath(genpath([codepath 'helperfunctions']))
 
 
@@ -95,8 +102,6 @@ halfhorz = blankwcfg0(round(size(blankwcfg0,1)/2),:);
 cumhalfhorz = cumsum(halfhorz);
 npix16deg = nnz(cumhalfhorz==cumhalfhorz(round(length(cumhalfhorz)/2)))+1;
 nICimpixperdeg = npix16deg/16;
-
-fs=18;
 
 %% 1d histogram of gaze distribution for each trial type
 tt2p = [106 107 110 111];

@@ -11,7 +11,7 @@ nwbsessions = {nwbdir.name};
 nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
 Nsessions = numel(nwbsessions);
 
-probes = {'C'};
+probes = {'C', 'D', 'E'};
 neuindV1agg = cell(1, numel(nwbsessions));
 stLFPagg = cell(numel(probes), numel(nwbsessions));
 stCSDagg = cell(numel(probes), numel(nwbsessions));
@@ -51,7 +51,11 @@ for ises = 1:Nsessions
         ctxelecindsagg{iprobe,ises} = ctxelec;
 
         load(sprintf('%sLFP_TFR_L23_probe%s.mat', pathpp, probes{iprobe}), 'elecL23', 'fVec')
-        elecL23agg(iprobe,ises) = elecL23;
+        if ~isempty(elecL23)
+            elecL23agg(iprobe,ises) = elecL23;
+        else
+            elecL23agg(iprobe,ises) = 0;
+        end
     end
 end
 toc
@@ -86,11 +90,13 @@ for ises = 1:Nsessions
     end
 end
 
-figure; hold all
-plot(trange, squeeze(stLFPagg{iprobe,ises}(ci,:,elecL23agg(iprobe,ises))) )
-plot(trange, squeeze(stavglplfp(ci,:,elecL23agg(iprobe,ises))) )
+% figure; hold all
+% plot(trange, squeeze(stLFPagg{iprobe,ises}(ci,:,elecL23agg(iprobe,ises))) )
+% plot(trange, squeeze(stavglplfp(ci,:,elecL23agg(iprobe,ises))) )
 
 %%
+load('S:\OpenScopeData\00248_v240130\postprocessed\openscope_popavg_all.mat')
+
 neuindV1all = false(size(sesneuall));
 for ises = 1:Nsessions
     tempsesneuind = find(sesneuall==ises);
@@ -107,22 +113,16 @@ if ~all( ismember(neuindV1all, neuV1) )
     error('check neuindV1agg')
 end
 
-%%
-load('S:\OpenScopeData\00248_v240130\postprocessed\openscope_popavg_all.mat')
-
-iprobe = find(strcmp(probes, 'C'));
-
-
-stLFPprobeacc = cat(1,stLFPagg{iprobe,:});
-
-[v,c]=uniquecnt( sesneuall(ICsigall.ICwcfg1_presentations.ICencoder & neuV1) );
-disp([v,c])
+% [v,c]=uniquecnt( sesneuall(ICsigall.ICwcfg1_presentations.ICencoder & neuV1) );
+% disp([v,c])
 
 %% IC-encoder vs segment responder CSD averaged in each session
+iprobe = find(strcmp(probes, 'E'));
+
 trange = -250:250;
 figure
 for ises = 1:Nsessions
-    if isempty(neuindV1agg{ises})
+    if isempty(neuindV1agg{ises}) || nnz(contains(lfpelecvecagg{iprobe,ises}.location, 'VIS'))<=1
         continue
     end
     for neuopt = 1:2
@@ -265,7 +265,7 @@ trange = -250:250;
 stCSDprobeL23 = NaN(nnz(neuindV1all),1);
 stCSDpre50probeL23 = NaN(nnz(neuindV1all),1);
 for ises = 1:Nsessions
-    if isempty(stCSDagg{iprobe,ises})
+    if isempty(stCSDagg{iprobe,ises}) | elecL23agg(iprobe,ises)==0
         continue
     end
     tempneuses = sesneuall(neuindV1all)==ises;
@@ -276,19 +276,19 @@ end
 figure
 hold all
 for neuopt = 1:2
-switch neuopt
-    case 1
-neutitle = 'IC-encoder';
-neuingroup = ICsigall.ICwcfg1_presentations.ICencoder;
-    case 2
-neutitle = 'segment responder';
-neuingroup = ICsigall.ICwcfg1_presentations.indin1 | ICsigall.ICwcfg1_presentations.indin2 | ...
-    ICsigall.ICwcfg1_presentations.indin3 | ICsigall.ICwcfg1_presentations.indin4;
-    otherwise
-        error('neuopt %.0f not recognized', neuopt)
-end
+    switch neuopt
+        case 1
+            neutitle = 'IC-encoder';
+            neuingroup = ICsigall.ICwcfg1_presentations.ICencoder;
+        case 2
+            neutitle = 'segment responder';
+            neuingroup = ICsigall.ICwcfg1_presentations.indin1 | ICsigall.ICwcfg1_presentations.indin2 | ...
+                ICsigall.ICwcfg1_presentations.indin3 | ICsigall.ICwcfg1_presentations.indin4;
+        otherwise
+            error('neuopt %.0f not recognized', neuopt)
+    end
 %histogram( stCSDprobeL23(neuingroup(neuindV1all)) , 'normalization', 'pdf', 'binwidth', 0.002)
-histogram( stCSDpre50probeL23(neuingroup(neuindV1all)) , 'binwidth', 0.1)%, 'normalization', 'pdf'
+histogram( stCSDpre50probeL23(neuingroup(neuindV1all)) , 'binwidth', 0.1, 'normalization', 'pdf')
 end
 
 figure; histogram( stCSDpre50probeL23)
@@ -300,3 +300,67 @@ neuingroup = ICsigall.ICwcfg1_presentations.indin1 | ICsigall.ICwcfg1_presentati
     ICsigall.ICwcfg1_presentations.indin3 | ICsigall.ICwcfg1_presentations.indin4;
 segL23sink = stCSDpre50probeL23(neuingroup(neuindV1all));
 ranksum(ICL23sink, segL23sink)
+
+
+
+%%
+fs=14;
+VISlayers = {'1', '2/3', '4', '5', '6a', '6b'};
+xcols = jet(numel(VISlayers));
+
+figure
+for neuopt = 1:2
+    switch neuopt
+        case 1
+            neutitle = 'IC-encoder';
+            neuingroup = ICsigall.ICwcfg1_presentations.ICencoder;
+        case 2
+            neutitle = 'segment responder';
+            neuingroup = ICsigall.ICwcfg1_presentations.indin1 | ICsigall.ICwcfg1_presentations.indin2 | ...
+                ICsigall.ICwcfg1_presentations.indin3 | ICsigall.ICwcfg1_presentations.indin4;
+        otherwise
+            error('neuopt %.0f not recognized', neuopt)
+    end
+    subplot(1,2,neuopt)
+    hold all
+    for ises = 1:Nsessions
+        if isempty(stCSDagg{iprobe,ises})
+            continue
+        end
+        sesneuoi = neuingroup(sesneuall==ises);
+        sesneuindV1 = sesneuoi(neuindV1agg{ises});
+
+        lfpeleclocation = lfpelecvecagg{iprobe,ises}.location;
+        Nelec = numel(lfpeleclocation);
+        csdelectinds = 2:Nelec-1;
+
+        ctxelec = contains(lfpeleclocation, 'VIS');
+        ctxelecinds = find(ctxelec);
+        ctxelectop = find(ctxelec, 1, 'last');
+        ctxelecbottom = find(ctxelec, 1, 'first');
+        [C,ya,yc]=unique(lfpeleclocation(ctxelec));
+
+        xvec = -(find(ctxelec)-ctxelecbottom)/(ctxelectop-ctxelecbottom);
+        for il = 1:numel(VISlayers)
+            xoi = contains(lfpeleclocation(ctxelec), VISlayers{il});
+            plot( xvec(xoi), ...
+                squeeze(nanmean(stCSDagg{iprobe,ises}(sesneuindV1, trange<=0 & trange>-100,ctxelecinds(xoi)), 2)), ...
+                'o', 'Color', [xcols(il,:) 0.2])%, 'MarkerFaceColor', [xcols(il,:)])
+            text(0, yl(2)-0.06*range(yl)*(il-1), VISlayers{il}, ...
+                'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'Color', xcols(il,:), 'FontSize', fs)
+        end
+    end
+    if neuopt==1
+        % yl = 0.05*[-1 1];
+        % yl = 0.3*[-1 1];
+        yl = ylim;
+        yl = abs(max(yl))*[-1 1];
+    end
+    set(gca, 'FontSize',fs)
+    ylabel('stCSD -50~0ms from spike')
+    xlabel('electrode')
+    %legend(VISplayers)
+    ylim(yl)
+    title(neutitle)
+end
+
