@@ -64,7 +64,8 @@ lfpconv = convn(lfpsnip, reshape(kergauss,[],1), 'same');
 %   TFR - time-frequency response (TFR) (frequency-by-time-trial) for a
 %       single subject/session.
 thrFOM = 6;
-eventBand = [15 29];
+eventBand = [7 100];
+%eventBand = [15 29];
 tVec = lfpvistimes.(whichblock){itrial};
 if contains(whichblock, 'spontaneous')
     TFR = permute(tfrvispsth.(whichblock){itrial}, [2 1]);
@@ -85,7 +86,22 @@ evcols = {'trial_index', 'trial_class', 'maxima_frequency', ...
 tic
 [spectralEvents] = find_localmax_method_2(eventBand, thrFOM, tVec, fVec, ...
     TFR, classLabels);
-toc % 200s for 312s period
+toc % 200s for 312s period, 406s for 1-100Hz
+
+tic
+[spectralEvents1] = find_localmax_method_1(eventBand, thrFOM, tVec, fVec, ...
+    TFR, classLabels);
+toc % 126s for 1-100Hz
+
+figure; 
+subplot(2,1,1)
+histogram(spectralEvents1(:,strcmp(evcols,'maxima_frequency')), 0:99)
+subplot(2,1,2)
+histogram(spectralEvents(:,strcmp(evcols,'maxima_frequency')), 0:99)
+
+figure; 
+scatter(spectralEvents1(:,strcmp(evcols,'maxima_frequency')), ...
+    spectralEvents1(:,strcmp(evcols,'maxima_normmedian_power')), 'o')
 
 % tempx = spectralEvents(:, strcmp(evcols, 'maxima_frequency'));
 % tempy = spectralEvents(:, strcmp(evcols, 'maxima_power'));
