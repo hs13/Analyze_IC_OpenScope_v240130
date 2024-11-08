@@ -60,7 +60,7 @@ for ises = 1:numel(nwbsessions)
     load(sprintf('%spostprocessed_probe%s.mat', pathpp, probes{neuprobe}))
 
     blocksplit = strsplit(whichblock);
-    blockname = blocksplit{1};
+    whichblock = blocksplit{1};
 
     % for a = 1:numel(lfpareas)
     %     lfpareaprobeinds = 1+electrode_probeid( contains(electrode_location, 'VISp') & ~contains(electrode_location, 'VISpm') );
@@ -82,9 +82,9 @@ for ises = 1:numel(nwbsessions)
             continue
         end
         if lowpassopt
-            stpsthCSDfn = sprintf('%s%s_stCSD%s_lowpassprobe%s.mat', pathpp, whichneuarea, blockname, probes{lfpprobe});
+            stpsthCSDfn = sprintf('%s%s_stCSD%s_lowpassprobe%s.mat', pathpp, whichneuarea, whichblock, probes{lfpprobe});
         else
-            stpsthCSDfn = sprintf('%s%s_stCSD%s_probe%s.mat', pathpp, whichneuarea, blockname, probes{lfpprobe});
+            stpsthCSDfn = sprintf('%s%s_stCSD%s_probe%s.mat', pathpp, whichneuarea, whichblock, probes{lfpprobe});
         end
         if exist(stpsthCSDfn, 'file')
             fprintf('%s exists\n', stpsthCSDfn)
@@ -165,9 +165,6 @@ for ises = 1:numel(nwbsessions)
     neuprobe = mode(neuareaprobeinds);
     load(sprintf('%spostprocessed_probe%s.mat', pathpp, probes{neuprobe}))
 
-    blocksplit = strsplit(whichblock);
-    blockname = blocksplit{1};
-
     lfpprobe = neuprobe;
     % for a = 1:numel(lfpareas)
     %     lfpareaprobeinds = 1+electrode_probeid( contains(electrode_location, 'VISp') & ~contains(electrode_location, 'VISpm') );
@@ -187,7 +184,7 @@ for ises = 1:numel(nwbsessions)
             fprintf('LFP_TFR_L23_probe%s.mat does not exit!!!\n', probes{lfpprobe})
             continue
         end
-        stpsthTFRfn = sprintf('%s%s_stTFR%s_probe%s.mat', pathpp, whichneuarea, blockname, probes{lfpprobe});
+        stpsthTFRfn = sprintf('%s%s_stTFR%s_probe%s.mat', pathpp, whichneuarea, whichblock, probes{lfpprobe});
         if exist(stpsthTFRfn, 'file')
             fprintf('%s exists\n', stpsthTFRfn)
             continue

@@ -1,3 +1,4 @@
+clear all; close all; clc
 addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
 datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
@@ -8,11 +9,10 @@ probes = {'A', 'B', 'C', 'D', 'E', 'F'};
 visareas = {'AM', 'PM', 'V1', 'LM', 'AL', 'RL'};
 visctxareas = {'VISam', 'VISpm', 'VISp', 'VISl', 'VISal', 'VISrl'};
 
-lowpassopt = false;
 whichneuarea = 'V1';
 
 %% first, get psth of spectral events (vis stim aligned)
-for ises = 1:numel(nwbsessions)
+for ises = 12:numel(nwbsessions)
     clearvars -except ises datadir nwbsessions probes visareas visctxareas whichneuarea
     
     sesclk = tic;
@@ -29,6 +29,12 @@ for ises = 1:numel(nwbsessions)
         warning('this session has more than one %s probe', neuarea)
     end
     neuprobe = mode(neuareaprobeinds);
+
+    fprintf('%d/%d %s Probe%s\n', ises, numel(nwbsessions), nwbsessions{ises}, probes{neuprobe})
+    if ~exist(sprintf('%sLFP_TFR_L23_probe%s.mat', pathpp, probes{neuprobe}), 'file')
+        fprintf('LFP_TFR_L23_probe%s.mat does not exit!!!\n', probes{neuprobe})
+        continue
+    end
     
     load(sprintf('%spostprocessed_probe%s.mat', pathpp, probes{neuprobe}))
     load(sprintf('%sLFP_TFR_L23_probe%s.mat', pathpp, probes{neuprobe}))
@@ -38,8 +44,6 @@ for ises = 1:numel(nwbsessions)
     
     % whichblock = 'spontaneous_presentations';
     whichblock = 'ICwcfg1_presentations';
-    blocksplit = strsplit(whichblock);
-    blockname = blocksplit{1};
     
     if isfield(vis.(whichblock), 'ICtrialtypes')
         trialorder = vis.(whichblock).ICtrialtypes(vis.(whichblock).trialorder+1);
@@ -117,7 +121,7 @@ plot(1:numel(vistrialtypes), evhist, 'o-')
 set(gca, 'XTick', 1:numel(vistrialtypes), 'XTickLabel', vistrialtypes)
     %}
     
-    save( sprintf('%s%s_eventvis%s_probe%s.mat', pathpp, whichneuarea, blockname, probes{neuprobe}), ...
+    save( sprintf('%s%s_eventvis%s_probe%s.mat', pathpp, whichneuarea, whichblock, probes{neuprobe}), ...
         'eventBand', 'evcols', 'eventvis', 'eventvispsth', '-v7.3')
     
     
@@ -142,12 +146,13 @@ set(gca, 'XTick', 1:numel(vistrialtypes), 'XTickLabel', vistrialtypes)
     end
     
     % all events in the block
+    allettrange = -200:200;
     evfreq = spectralEvents(:,strcmp(evcols, 'maxima_frequency'));
     evtime = spectralEvents(:,strcmp(evcols, 'maxima_timing'));
     evoind = find( psthtli(evtime)>=0 & psthtli(evtime)<800 & evfreq>=15 & evfreq<30 );
     evpsthind = find(ismember(reshape(eventvispsth.(whichblock),[],1), evoind));
-    evtind = evpsthind+ettrange;
-    betaetspikeblock = NaN(Nneu, length(ettrange));
+    evtind = evpsthind+allettrange;
+    betaetspikeblock = NaN(Nneu, length(allettrange));
     for ci = 1:Nneu
         temppsth = reshape(psth.(whichblock)(:,:,ci),[],1);
         betaetspikeblock(ci,:) = mean( temppsth(evtind), 1);
@@ -165,10 +170,12 @@ xlim([-150 150])
 figure; imagesc(ettrange, 1:Nneu, convn(etspikeblock, kergauss, 'same')); xlim([-150 150])
     %}
     
-    save( sprintf('%s%s_betaetspike%s_probe%s.mat', pathpp, whichneuarea, blockname, probes{neuprobe}), ...
-        'vistrialtypes', 'ettrange', 'betaetvisspike', 'betaetspikeblock', '-v7.3')
-    
+    save( sprintf('%s%s_betaetspike%s_probe%s.mat', pathpp, whichneuarea, whichblock, probes{neuprobe}), ...
+        'vistrialtypes', 'ettrange', 'betaetvisspike', 'allettrange', 'betaetspikeblock', '-v7.3')
+
+   toc(sesclk) 
 end
+
 
 %% basic spectral event analyses
 % are there clear "bands" of spectral event frequencies? (boundary between beta and gamma

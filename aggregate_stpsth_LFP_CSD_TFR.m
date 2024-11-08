@@ -40,9 +40,6 @@ for ises = 1:Nsessions
     load(sprintf('%svisresponses_probe%s.mat', pathpp, probes{neuprobe} ))
     ICsigV1agg{ises} = ICsig;
 
-    blocksplit = strsplit(whichblock);
-    blockname = blocksplit{1};
-
     for a = 1:numel(lfpareas)
         lfpareaprobeinds = 1+electrode_probeid( contains(electrode_location, 'VISp') & ~contains(electrode_location, 'VISpm') );
         if strcmp(lfpareas{a}, 'V1')
@@ -80,9 +77,9 @@ for ises = 1:Nsessions
     end
 
     if lowpassopt
-        stpsthCSDfn = sprintf('%s%s_stCSD%s_lowpassprobe%s.mat', pathpp, whichneuarea, blockname, probes{lfpprobe});
+        stpsthCSDfn = sprintf('%s%s_stCSD%s_lowpassprobe%s.mat', pathpp, whichneuarea, whichblock, probes{lfpprobe});
     else
-        stpsthCSDfn = sprintf('%s%s_stCSD%s_probe%s.mat', pathpp, whichneuarea, blockname, probes{lfpprobe});
+        stpsthCSDfn = sprintf('%s%s_stCSD%s_probe%s.mat', pathpp, whichneuarea, whichblock, probes{lfpprobe});
     end
     %     'lfpelecspacing', 'csdelectinds', 'vistrialtypes', 'sttrange', 'stCSDvisprobe'
     load(stpsthCSDfn)

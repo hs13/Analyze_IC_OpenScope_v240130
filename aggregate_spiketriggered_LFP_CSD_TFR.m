@@ -60,6 +60,7 @@ for ises = 1:Nsessions
 end
 toc
 
+
 cellfun(@nnz, ctxelecindsagg)
 
 %% low pass filter spike triggered average LFP before calculating CSD
@@ -412,3 +413,57 @@ for neuopt = 1:3
     xlim([7 80])
     title(neutitle)
 end
+
+%%
+fs = 16;
+trange = -250:250;
+xl=[7 80];
+yl=0.125*[-1 1];
+figure('Position', [100 100 400 360])
+hold all
+for neuopt = 1:2
+    switch neuopt
+        case 1
+            neutitle = 'IC-encoders';
+            neuingroup = ICsigall.ICwcfg1_presentations.ICencoder;
+            neucol = [0 0.7 0];
+        case 2
+            neutitle = 'segment responders';
+            neuingroup = ICsigall.ICwcfg1_presentations.indin1 | ICsigall.ICwcfg1_presentations.indin2 | ...
+                ICsigall.ICwcfg1_presentations.indin3 | ICsigall.ICwcfg1_presentations.indin4;
+            neucol = [1 0 1];
+        case 3
+            neutitle = 'inducer-encoders';
+            neuingroup = ICsigall.ICwcfg1_presentations.inducerencoder;
+            neucol = [0 0 1];
+        otherwise
+            error('neuopt %.0f not recognized', neuopt)
+    end
+    neustTFR = [];
+    for ises = 1:Nsessions
+        if isempty(stTFRagg{iprobe,ises})
+            continue
+        end
+        sesneuoi = neuingroup(sesneuall==ises);
+        sesneuindV1 = sesneuoi(neuindV1agg{ises});
+
+        tempsttfr = squeeze(mean(stTFRagg{iprobe,ises}(sesneuindV1, trange<=25 & trange>-25,:), 2));
+        % neustTFR = cat(1, neustTFR, tempsttfr);
+        tempmeantfr = nanmean(squeeze(mean(stTFRagg{iprobe,ises}(:, trange<=25 & trange>-25,:), 2)), 1);
+        neustTFR = cat(1, neustTFR, log2(tempsttfr./tempmeantfr));
+    end
+    %plot(fVec, neustTFR)
+    shadedErrorBar(fVec, mean(neustTFR,1), std(neustTFR,0,1)/sqrt(size(neustTFR,1)), {'-', 'Color', neucol, 'LineWidth', 2},1)
+    text(xl(2),yl(1)+0.08*range(yl)*(3-neuopt), neutitle, 'FontSize', fs, 'Color', neucol, 'HorizontalAlignment', 'right', 'VerticalAlignment','middle')
+end
+plot([fVec(1) fVec(end)],[0 0], 'k--', 'LineWidth', 1)
+% plot(15*[1 1],yl, 'k--', 'LineWidth', 1)
+% plot(30*[1 1],yl, 'k--', 'LineWidth', 1)
+plot([15 30], yl(2)*[1 1], 'b-', 'LineWidth', 2)
+text(mean([15 30]), yl(2), 'Beta', 'FontSize',fs, 'Color','b', 'HorizontalAlignment','center', 'VerticalAlignment','bottom')
+set(gca, 'FontSize',fs)
+ylabel('Spike Triggered Spectral Activity', 'FontSize',fs)
+xlabel('Frequency (Hz)', 'FontSize',fs)
+%legend(VISplayers)
+ylim(yl)
+xlim(xl)

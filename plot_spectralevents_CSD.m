@@ -64,8 +64,8 @@ lfpconv = convn(lfpsnip, reshape(kergauss,[],1), 'same');
 %   TFR - time-frequency response (TFR) (frequency-by-time-trial) for a
 %       single subject/session.
 thrFOM = 6;
-eventBand = [7 100];
-%eventBand = [15 29];
+% eventBand = [7 100];
+eventBand = [15 29];
 tVec = lfpvistimes.(whichblock){itrial};
 if contains(whichblock, 'spontaneous')
     TFR = permute(tfrvispsth.(whichblock){itrial}, [2 1]);
@@ -88,6 +88,7 @@ tic
     TFR, classLabels);
 toc % 200s for 312s period, 406s for 1-100Hz
 
+%%
 tic
 [spectralEvents1] = find_localmax_method_1(eventBand, thrFOM, tVec, fVec, ...
     TFR, classLabels);
@@ -121,6 +122,7 @@ caxis(prctile(TFR(:), [2.5 97.5])); colorbar
 figure; histogram(spectralEvents(:, strcmp(evcols, 'event_duration')))
 
 %% top 50 events CSD
+Nelec = size(lfpconv,2);
 Nevents = size(spectralEvents,1);
 [sv,si]= sort(spectralEvents(:, strcmp(evcols, 'maxima_power')),'descend');
 topeventinds = si(1:50);
@@ -171,16 +173,20 @@ colorbar
 colormap jet
 end
 
+alignto = 'trough'; % 'trough': align to trough timing near the event, 'event': align to even timing 
 % get CSD 200 ms before and after
 % (Neletrodes-2) * time * Nevents
 eventCSD = NaN(length(csdelectinds), length(trange), Nevents);
 eventLFP = NaN(Nelec, length(trange), Nevents);
 for e = 1:Nevents
-    % eventCSD(:,:,e) = CSD(:, evtroughtind(e)+trange );
-    % eventLFP(:,:,e) = lfpconv(evtroughtind(e)+trange, :)';
-
+    switch alignto
+        case 'trough'
+    eventCSD(:,:,e) = CSD(:, evtroughtind(e)+trange );
+    eventLFP(:,:,e) = lfpconv(evtroughtind(e)+trange, :)';
+        case 'event'
     eventCSD(:,:,e) = CSD(:, tindevent(e)+trange );
     eventLFP(:,:,e) = lfpconv(tindevent(e)+trange, :)';
+    end
 end
 
 ctxelec = contains(lfpelecvec.location, 'VIS');
@@ -190,22 +196,66 @@ if ~isequal(ctxelecbottom:ctxelectop, find(ctxelec)')
     warning('cortex electrodes are not consecutive -- check')
 end
 
-% top 50 beta events average CSD and LFP
-figure('Position',[100 100 300 300])
-hold all
+%% top 50 beta events average CSD and LFP
+fs = 16;
 yl = [ctxelecbottom ctxelectop]+.5;
+yt = 2:2:length(csdelectinds);
+csdelecloc = lfpelecvec.location(csdelectinds);
+for iy = 1:numel(csdelecloc)
+    locelec = csdelecloc{iy};
+    if contains(locelec, 'VISp')
+        locsplt = strsplit(locelec, 'VISp');
+        locsplt{1} = 'V1L';
+        csdelecloc{iy} = strcat(locsplt{:});
+    end
+end
+
+%figure('Position',[100 100 300 300])
+figure('Position', [100 100 450 360])
+hold all
 imagesc(trange, csdelectinds, squeeze(mean(eventCSD(:,:,topeventinds),3)))
 tempvec = squeeze( mean(eventLFP(elecL23,:,topeventinds), 3) );
 tempvec = tempvec-min(tempvec);
 tempvecnorm = tempvec*0.9*range(yl)/range(tempvec)+yl(1)+0.05*range(yl);
 plot(trange, tempvecnorm, 'k-', 'linewidth',2)
 scatter(0,elecL23,20,'w*', 'linewidth', 2)
-xlim([-100 100])
+set(gca, 'FontSize',fs, 'XGrid', 'on', 'YTick', csdelectinds(yt), 'YTickLabel', csdelecloc(yt), 'YDir', 'normal')
+xlabel('Time (ms)', 'FontSize',fs)
+xlim(200*[-1 1])
 ylim(yl)
-set(gca, 'XGrid', 'on', 'YTick', csdelectinds, 'YTickLabel', lfpelecvec.location(csdelectinds), 'YDir', 'normal')
-colorbar
+caxis(0.05*[-1 1])
+cb = colorbar;
+cb.Label.String = 'CSD';
+cb.Label.FontSize = fs;
+cb.Label.Position(1) = 3.5;
+cb.Label.Rotation = 270;
 colormap jet
-caxis(0.04*[-1 1])
+title('Spontaneous Beta Event', 'FontSize', fs, 'FontWeight', 'normal')
+
+cl = 0.02*[-1 1];
+yl = [ctxelecbottom ctxelectop]+.5;
+figure('Position', [500 100 450 360])
+hold all
+trialorder = vis.ICwcfg1_presentations.ICtrialtypes(vis.ICwcfg1_presentations.trialorder+1);
+trialsoi = ismember(trialorder, [106, 111]);
+IC_CSD = squeeze(mean(csdvispsth.ICwcfg1_presentations(:,trialsoi,:),2))';
+imagesc(psthtli, csdelectinds, IC_CSD)
+tloind = find(psthtli>=0 & psthtli<400);
+[mv,mi] = min(IC_CSD(csdelectinds==elecL23,tloind));
+scatter(psthtli(tloind(mi)),elecL23,20,'w*', 'linewidth', 2)
+set(gca, 'FontSize',fs, 'XGrid', 'on', 'YTick', csdelectinds(yt), 'YTickLabel', csdelecloc(yt), 'YDir', 'normal')
+xlabel('Time (ms)', 'FontSize',fs)
+xlim([0 400])
+ylim(yl)
+caxis(cl)
+cb = colorbar;
+cb.Ticks = sort([cl 0])
+cb.Label.String = 'CSD';
+cb.Label.FontSize = fs;
+cb.Label.Position(1) = 3.5;
+cb.Label.Rotation = 270;
+colormap jet
+title('Visual Presentation', 'FontSize', fs, 'FontWeight', 'normal')
 
 %% average TFR of top 50 elecL23 troughs 
 Ntroughs = 50;
