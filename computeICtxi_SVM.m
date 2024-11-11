@@ -1,6 +1,8 @@
-function [SVMout, SVM_models] = computeICtxi_SVM(tempR, trialorder, whichR, preproc, whichSVMkernel)
+function [SVMout, SVM_models] = computeICtxi_SVM(tempR, trialorder, svmdesc, whichR, preproc, whichSVMkernel, cvtrials)
+sesclk = tic;
 
 Nsplits = 10;
+optimizeSVM = true;
 
 % whichR = 'spkcnt';
 % if size(Rall.(ICblocks{b}),2)~=length(neu2anal)
@@ -102,14 +104,20 @@ SVMout.(whichR).testtrialinds = zeros(Ntesttrials, Nsplits);
 
 % Nsplits-fold cross-validation
 trials2analind = find(trials2anal); % consider randomizing the order of this
-C = cvpartition(trialorder(trials2analind),'KFold',Nsplits, 'Stratify',true);
-if ~( all(C.TrainSize==Ntraintrials) && all(C.TestSize==Ntesttrials) )
-    error('check balancing trials')
+if ~cvtrials.loadcvpartition
+    C = cvpartition(trialorder(trials2analind),'KFold',Nsplits, 'Stratify',true);
+    if ~( all(C.TrainSize==Ntraintrials) && all(C.TestSize==Ntesttrials) )
+        error('check balancing trials')
+    end
 end
 for isplit = 1:Nsplits
     close all
     ttclk = tic;
     
+    if cvtrials.loadcvpartition
+        traintrialinds = cvtrials.traintrialinds(:,isplit);
+        testtrialinds = cvtrials.testtrialinds(:,isplit);
+    else
     %{
                 testtrialinds = zeros(Ntesttrials,1);
                 traintrialinds = zeros(Ntraintrials,1);
@@ -129,12 +137,13 @@ for isplit = 1:Nsplits
                 testtrialinds = trials2anal(ismember(trials2anal, testtrialinds));
                 traintrialinds = trials2anal(ismember(trials2anal, traintrialinds));
     %}
-    
-    idxTrain = training(C,isplit);
-    traintrialinds = trials2analind(idxTrain);
-    idxTest = test(C,isplit);
-    testtrialinds = trials2analind(idxTest);
-    
+
+        idxTrain = training(C,isplit);
+        traintrialinds = reshape( trials2analind(idxTrain) ,[],1);
+        idxTest = test(C,isplit);
+        testtrialinds = reshape( trials2analind(idxTest) ,[],1);
+    end
+
     if any(ismember(traintrialinds, testtrialinds))
         error('train and test trials should not overlap')
     end
@@ -236,10 +245,9 @@ for isplit = 1:Nsplits
     end
     
     
-    fprintf('%s %s %s %s %d/%d\n', mousedate, whichSVMkernel, whichvisarea, whichICblock, isplit, Nsplits)
+    fprintf('SVM %s %s %d/%d\n', whichSVMkernel, preproc, isplit, Nsplits)
     toc(ttclk)
 end
 
 
-fprintf('%s %s %s %s done!\n', mousedate, whichSVMkernel, whichvisarea, whichICblock)
 toc(sesclk)
