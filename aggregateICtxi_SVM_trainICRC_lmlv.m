@@ -9,9 +9,15 @@ addpath([codepath 'helperfunctions'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScope_spkcnt_ICwcfg1.mat'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1.mat'])
 
-% for ises = 1:numel(nwbsessions)
-pathpp= [drivepath 'RESEARCH/logmean_logvar/sub-619293/'];
+ises = 3;
+pathpp= [drivepath 'RESEARCH/logmean_logvar/' nwbsessions{ises} '/'];
+% pathpp= [drivepath 'RESEARCH/logmean_logvar/sub-619293/'];
 % pathpp= [drivepath 'RESEARCH/logmean_logvar/sub-620333/'];
+
+% for ises = 1:numel(nwbsessions)
+%     mousedate = nwbsessions{ises};
+%     fprintf('%s %d\n', mousedate, ises)
+%     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
 
 load([pathpp 'SVM_trainICRC_V1_Linear_meancenter.mat'])
 load([pathpp 'SVMmodels_trainICRC_V1_Linear_meancenter.mat'])
@@ -38,6 +44,12 @@ for islope = 0:numel(disperses)
     else
         SVMout = SVMtrainICRC_lmlvs(islope);
     end
+    for isplit = 1:Nsplits
+        if ~isequal(unique(SVMout.spkcnt.all.label(:,isplit)), testt')
+            error('check trained SVM: not all trial types are respresented')
+        end
+    end
+    
     % train accuracy
     trainlabs = SVMout.trialorder(SVMout.spkcnt.traintrialinds);
     trainpred = SVMout.spkcnt.train.label;
@@ -103,11 +115,13 @@ plot(xl, infperfasis*[1 1], 'c-')
 xlabel('log(mean) vs log(var) slopes')
 ylabel('inference performance')
 
+
+
 %% to test robustness silence a portion of neurons and see change in classification accuracy across slopes
 % parametrically change proportion silenced
 propneusilvec = 0:0.1:1;
-% randomly select neurons to silence: sample 1000X
-Nsamples = 1000;
+% randomly select neurons to silence: sample 100X
+Nsamples = 10; % estimated ~30min for 100 samples
 Nneurons = SVMtrainICRC.Nneurons;
 Nsplits = size(SVMtrainICRC.spkcnt.testtrialinds,2);
 
@@ -154,7 +168,7 @@ for islope = 1:numel(disperses)
     silrandtestperflmlvs{islope} = NaN(Nsamples, numel(propneusilvec));
     silrandinfperflmlvs{islope} = NaN(Nsamples, numel(propneusilvec));
 end
-
+silrandclk = tic;
 for n = 1:length(propneusilvec)
     propneu2sil = propneusilvec(n);
     if propneu2sil==0
@@ -165,11 +179,12 @@ for n = 1:length(propneusilvec)
         neu2silmat = false(Nneurons, Nsamples);
         for s = 1:Nsamples
             neurand = randperm(Nneurons, round(propneu2sil*Nneurons));
-            neu2silmat(neurand,:) = true;
+            neu2silmat(neurand,s) = true;
         end
     end
     
     for islope = 0:numel(disperses)
+        tic
         if islope==0
             tempR = reshape(spkcntICtt, Nrep*Nhireptt, Nneu)';
             trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
@@ -180,11 +195,11 @@ for n = 1:length(propneusilvec)
             spkcntvar = var(spkcntICtt,0,1); % 1XNimg X Nneurons
             temp = spkcntvar; temp(spkcntvar==0)=NaN;
             totvar = nanmean(temp,2);
-            
+
             tempx = log10(spkcntmu);
             tempx(spkcntmu==0) = NaN;
             meanx = squeeze(nanmean(tempx,3)); % average across neurons: 1XNimg
-            
+
             Avec = lmlvslope(ises,:);
             Bvec = lmlvyintercept(ises,:);
             Cvec = disperses(islope)*ones(1,Nhireptt);
@@ -198,17 +213,16 @@ for n = 1:length(propneusilvec)
                 case 0
                     valneu = true(Nneu,1);
                 case 1
-                    valneu = squeeze(all(newspkcntvar(1,ismember(hireptt,testt),:)>0, 2));
+                    valneu = squeeze(all(newspkcntvar(1,ismember(hireptt,testt),:)>0 & isfinite(newspkcntvar(1,ismember(hireptt,testt),:)), 2));
                 case 2
-                    valneu = squeeze(all(newspkcntvar(1,:,:)>0, 2));
+                    valneu = squeeze(all(newspkcntvar(1,:,:)>0 & isfinite(newspkcntvar(1,:,:)), 2));
                 otherwise
                     error('excludeneuvar0 option not recognized')
             end
-            
-            tempR = reshape(newspkcntICtt, Nrep*Nhireptt, nnz(valneu))';
+
+            tempR = reshape(newspkcntICtt(:,:,valneu), Nrep*Nhireptt, nnz(valneu))';
             trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
         end
-        
         
         if islope==0
             SVMout = SVMtrainICRC;
@@ -220,12 +234,12 @@ for n = 1:length(propneusilvec)
             valneu = SVMout.valneu;
         end
         
-        trainaccpd = zeros(Nsamples, Ntt,Ntt, Nsplits);
-        testaccpd = zeros(Nsamples, Ntt,Ntt, Nsplits);
-        infaccpd = zeros(Nsamples, numel(inferencett),Ntt, Nsplits);
-        trainperfpd = zeros(Nsamples, Nsplits);
-        testperfpd = zeros(Nsamples, Nsplits);
-        infperfpd = zeros(Nsamples, Nsplits);
+        trainaccpd = NaN(Nsamples, Ntt,Ntt, Nsplits);
+        testaccpd = NaN(Nsamples, Ntt,Ntt, Nsplits);
+        infaccpd = NaN(Nsamples, numel(inferencett),Ntt, Nsplits);
+        trainperfpd = NaN(Nsamples, Nsplits);
+        testperfpd = NaN(Nsamples, Nsplits);
+        infperfpd = NaN(Nsamples, Nsplits);
         for isplit = 1:Nsplits
             traintrialinds = SVMout.spkcnt.traintrialinds(:,isplit);
             testtrialinds = SVMout.spkcnt.testtrialinds(:,isplit);
@@ -256,13 +270,18 @@ for n = 1:length(propneusilvec)
                 Xsilrand = Tp;
                 Xsilrand(:,neu2silmat(valneu,s)) = 0;
                 [templabel,tempscore] = predict(SVM_models{isplit}, Xsilrand);
-                
+
                 % sanity check
                 if propneu2sil==0
                     if ~isequaln(templabel, SVMout.spkcnt.all.label(:,isplit))
                         error('check that Tp was calculated correctly')
                     end
                 end
+                
+%                 if numel(unique(templabel))<Ntt
+%                     warning('only %d/%d trial types returned by SVM, skipping...', numel(unique(templabel)), Ntt)
+%                     continue
+%                 end
                 
                 % train accuracy
                 trainpred = templabel(traintrialinds);
@@ -308,6 +327,7 @@ for n = 1:length(propneusilvec)
             silrandtrainperfasis(:,n) = mean(trainperfpd,2);
             silrandtestperfasis(:,n) = mean(testperfpd,2);
             silrandinfperfasis(:,n) = mean(infperfpd,2);
+            fprintf('silence %.2f, as-is done\n', propneu2sil)
         else
             silrandtraincmlmlvs{islope}(:,n,:,:) = mean(trainaccpd,4);
             silrandtestcmlmlvs{islope}(:,n,:,:) = mean(testaccpd,4);
@@ -316,7 +336,109 @@ for n = 1:length(propneusilvec)
             silrandtrainperflmlvs{islope}(:,n) = mean(trainperfpd,2);
             silrandtestperflmlvs{islope}(:,n) = mean(testperfpd,2);
             silrandinfperflmlvs{islope}(:,n) = mean(infperfpd,2);
+            fprintf('silence %.2f, lmlv slope %.2f done\n', propneu2sil, disperses(islope))
         end
-        
+        toc
     end
 end
+toc(silrandclk)
+
+
+lmlvcols = cool(numel(disperses));
+lmlvlegs = cell(1,numel(disperses)+1);
+figure
+hold all
+for islope = 1:numel(disperses)
+    if disperses(islope)==1
+        lw = 2;
+    else
+        lw = 1;
+    end
+    errorbar( 100*(1-propneusilvec), nanmean(silrandtestperflmlvs{islope},1), ...
+        nanstd(silrandtestperflmlvs{islope},0,1)./sqrt(sum(~isnan(silrandtestperflmlvs{islope}),1)), ...
+        'Color', lmlvcols(islope,:), 'LineWidth', lw)
+    lmlvlegs{islope} = sprintf('Slope%.1f',disperses(islope));
+end
+errorbar( 100*(1-propneusilvec), nanmean(silrandtestperfasis,1), ...
+    nanstd(silrandtestperfasis,0,1)./sqrt(sum(~isnan(silrandtestperfasis),1)), ...
+    'Color', 'k', 'LineWidth', 2)
+lmlvlegs{end} = 'as-is';
+legend(lmlvlegs)
+xlabel('%Neurons')
+ylabel('test accuracy')
+% silrandinfperflmlvs{islope}
+
+
+lmlvcols = cool(numel(disperses));
+lmlvlegs = cell(1,numel(disperses)+1);
+figure
+hold all
+for islope = 1:numel(disperses)
+    if disperses(islope)==1
+        lw = 2;
+    else
+        lw = 1;
+    end
+    errorbar( 100*(1-propneusilvec), nanmean(silrandinfperflmlvs{islope},1), ...
+        nanstd(silrandinfperflmlvs{islope},0,1)./sqrt(sum(~isnan(silrandinfperflmlvs{islope}),1)), ...
+        'Color', lmlvcols(islope,:), 'LineWidth', lw)
+    lmlvlegs{islope} = sprintf('Slope%.1f',disperses(islope));
+end
+errorbar( 100*(1-propneusilvec), nanmean(silrandinfperfasis,1), ...
+    nanstd(silrandinfperfasis,0,1)./sqrt(sum(~isnan(silrandinfperfasis),1)), ...
+    'Color', 'k', 'LineWidth', 2)
+lmlvlegs{end} = 'as-is';
+legend(lmlvlegs)
+xlabel('%Neurons')
+ylabel('inference performance')
+% silrandinfperflmlvs{islope}
+
+lmlvcols = cool(numel(disperses));
+lmlvlegs = cell(1,numel(disperses)+1);
+figure
+for isp = 1:4
+    switch isp
+        case 1
+            ylab = 'P(IC1|TRE1)';
+            r=1; c=1;
+        case 2
+            ylab = 'P(LC1|TRE1)';
+            r=1; c=2;
+        case 3
+            ylab = 'P(LC2|TRE2)';
+            r=2; c=3;
+        case 4
+            ylab = 'P(IC2|TRE2)';
+            r=2; c=4;
+    end
+    subplot(2,2,isp)
+hold all
+for islope = 1:numel(disperses)
+    if disperses(islope)==1
+        lw = 2;
+    else
+        lw = 1;
+    end
+    errorbar( 100*(1-propneusilvec), nanmean(silrandinfcmlmlvs{islope}(:,:,r,c),1), ...
+        nanstd(silrandinfcmlmlvs{islope}(:,:,r,c),0,1)./sqrt(sum(~isnan(silrandinfcmlmlvs{islope}(:,:,r,c)),1)), ...
+        'Color', lmlvcols(islope,:) , 'LineWidth', lw)
+    lmlvlegs{islope} = sprintf('Slope%.1f',disperses(islope));
+end
+errorbar( 100*(1-propneusilvec), nanmean(silrandinfcmasis(:,:,r,c),1), ...
+    nanstd(silrandinfcmasis(:,:,r,c),0,1)./sqrt(sum(~isnan(silrandinfcmasis(:,:,r,c)),1)), ...
+    'Color', 'k', 'LineWidth', 2)
+lmlvlegs{end} = 'as-is';
+legend(lmlvlegs)
+xlabel('%Neurons')
+ylabel(ylab)
+% silrandinfperflmlvs{islope}
+end
+
+%%
+save([pathpp 'randomsilencing_SVM_trainICRC_lmlvslopes.mat'], ...
+    'traincmlmlvs', 'testcmlmlvs', 'infcmlmlvs', ...
+    'trainperflmlvs', 'testperflmlvs', 'infperflmlvs', ...
+    'disperses', 'propneusilvec', 'silrandtraincmasis', 'silrandtestcmasis', 'silrandinfcmasis', ...
+    'silrandtrainperfasis', 'silrandtestperfasis', 'silrandinfperfasis', ...
+    'silrandtraincmlmlvs', 'silrandtestcmlmlvs', 'silrandinfcmlmlvs', ...
+    'silrandtrainperflmlvs', 'silrandtestperflmlvs', 'silrandinfperflmlvs', '-v7.3')
