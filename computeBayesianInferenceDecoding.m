@@ -699,7 +699,7 @@ for ises = 1:numel(nwbsessions)
     fprintf('%s %d\n', mousedate, ises)
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
 
-    excludeneuvar0 = 0;
+    excludeneuvar0 = 2;
     % if 0, keep all neurons; if 1, exclude 0 variance neurons in train trial
     % types; if 2 exclude 0 variance neurons in all trial types
     twin = 0.4; % in sec
@@ -857,8 +857,8 @@ for ises = 1:numel(nwbsessions)
         infperf = zeros(numel(inferencett), Ntt);
         for itt = 1:numel(inferencett)
             trialsoi = SVMtrainICRC.trialorder(inftrials)==inferencett(itt);
-            [v,c]=uniquecnt(infpred(trialsoi));
-            infperf(itt, ismember(testt,v)) = c/nnz(trialsoi);
+            [v,c]=uniquecnt(infpred(trialsoi,:));
+            infperf(itt, ismember(testt,v)) = c/(Nsplits*nnz(trialsoi));
         end
 
         if islope==0
