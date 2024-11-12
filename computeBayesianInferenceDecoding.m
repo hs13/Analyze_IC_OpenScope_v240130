@@ -769,9 +769,9 @@ for ises = 1:numel(nwbsessions)
                 case 0
                     valneu = true(Nneu,1);
                 case 1
-                    valneu = squeeze(all(newspkcntvar(1,ismember(hireptt,testt),:)>0, 2));
+                    valneu = squeeze(all(newspkcntvar(1,ismember(hireptt,testt),:)>0 & isfinite(newspkcntvar(1,ismember(hireptt,testt),:)), 2));
                 case 2
-                    valneu = squeeze(all(newspkcntvar(1,:,:)>0, 2));
+                    valneu = squeeze(all(newspkcntvar(1,:,:)>0 & isfinite(newspkcntvar(1,:,:)), 2));
                 otherwise
                     error('excludeneuvar0 option not recognized')
             end
@@ -781,7 +781,7 @@ for ises = 1:numel(nwbsessions)
                 spkcntlmlvs{n} = squeeze(newspkcntICtt(:,n,valneu));
             end
 
-            tempR = reshape(newspkcntICtt, Nrep*Nhireptt, nnz(valneu))';
+            tempR = reshape(newspkcntICtt(:,:,valneu), Nrep*Nhireptt, nnz(valneu))';
             trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
         end
         % typi = 4;
@@ -858,7 +858,7 @@ for ises = 1:numel(nwbsessions)
         for itt = 1:numel(inferencett)
             trialsoi = SVMtrainICRC.trialorder(inftrials)==inferencett(itt);
             [v,c]=uniquecnt(infpred(trialsoi,:));
-            infperf(itt, ismember(testt,v)) = c/(Nsplits*nnz(trialsoi));
+            infperf(itt, ismember(testt,v)) = c/(size(infpred,2)*nnz(trialsoi));
         end
 
         if islope==0
