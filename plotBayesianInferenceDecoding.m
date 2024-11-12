@@ -5,9 +5,9 @@ else
     drivepath = 'G:/My Drive/';
     codepath = 'C:\Users\USER\GitHub\';
 end
-
 addpath([codepath 'helperfunctions'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScope_spkcnt_ICwcfg1.mat'])
+
 Nsessions = numel(nwbsessions);
 Ntt = 4;
 Ninfertt=2;

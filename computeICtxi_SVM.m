@@ -40,6 +40,8 @@ Ntt = numel(traintrialtypes);
 Nprobett = numel(probetrialtypes);
 Nalltt = numel(alltrialtypes);
 
+SVMout.preproc = preproc;
+SVMout.whichSVMkernel = whichSVMkernel;
 SVMout.Nneurons = Nneurons;
 % SVMout.exptid = ICblocks{b};
 % SVMout.ICtrialtypes = ICtrialtypes;
@@ -99,8 +101,8 @@ SVM_models.(whichR) = cell(1, Nsplits);
 
 SVMout.(whichR).traintrialinds = zeros(Ntraintrials, Nsplits);
 SVMout.(whichR).testtrialinds = zeros(Ntesttrials, Nsplits);
-
 % SVMout.(whichR).Ylabs = cell(Ntt, Nsplits);
+SVMout.(whichR).Xall = cell(1, Nsplits);
 
 % Nsplits-fold cross-validation
 trials2analind = find(trials2anal); % consider randomizing the order of this
@@ -163,7 +165,6 @@ for isplit = 1:Nsplits
             trainRstd = std(tempR(:,traintrialinds),0,2);
             
             Tp = ( (tempR-trainRmean)./trainRstd )';
-            Tp(isnan(Tp))=0;
         case 'minmax'
             trainRmin = min(tempR(:,traintrialinds),[],2);
             trainRrange = range(tempR(:,traintrialinds),2);
@@ -174,6 +175,7 @@ for isplit = 1:Nsplits
             
             Tp = (tempR-trainRmean)';
     end
+    Tp(isnan(Tp))=0;
     
     X = Tp(traintrialinds,:);
     Y = reshape(trialorder(traintrialinds),[],1);
@@ -243,7 +245,7 @@ for isplit = 1:Nsplits
         SVMout.(whichR).(svmmd).label(:,isplit) = templabel;
         SVMout.(whichR).(svmmd).score(:,:,isplit) = tempscore;
     end
-    
+    SVMout.(whichR).Xall{isplit} = Xall;
     
     fprintf('SVM %s %s %d/%d\n', whichSVMkernel, preproc, isplit, Nsplits)
     toc(ttclk)

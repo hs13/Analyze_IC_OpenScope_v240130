@@ -760,6 +760,8 @@ for ises = 1:numel(nwbsessions)
 
             % note, fitcsvm removes entire rows of data corresponding to a missing response. 
             % rows correspond to observations
+            % as such, if there are any neurons where newspkcntvar is <=0 or nan 
+            % for any trial type, all trials in that trial type will be removed
             % When computing total weights (see the next bullets), 
             % fitcsvm ignores any weight corresponding to an observation 
             % with at least one missing predictor. 
