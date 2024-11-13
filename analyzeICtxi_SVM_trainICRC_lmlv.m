@@ -9,6 +9,11 @@ addpath([codepath 'helperfunctions'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScope_spkcnt_ICwcfg1.mat'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1.mat'])
 
+excludeneuvar0 = 0;
+% if 0, keep all neurons; if 1, exclude zero variance neurons in train trial
+% types; if 2 exclude zero variance neurons in all trial types
+fprintf('neuron exclusion criterion %d\n', excludeneuvar0)
+
 % ises = 3;
 % pathpp= [drivepath 'RESEARCH/logmean_logvar/' nwbsessions{ises} '/'];
 % % pathpp= [drivepath 'RESEARCH/logmean_logvar/sub-619293/'];
@@ -22,6 +27,9 @@ for ises = 1:numel(nwbsessions)
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
 
     pltses = false;
+    preproc = 'meancenter';
+    whichSVMkernel = 'Linear';
+    svmdesc = 'trainICRC';
     switch excludeneuvar0
         case 0
             svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
@@ -143,7 +151,7 @@ for ises = 1:numel(nwbsessions)
     % parametrically change proportion silenced
     propneusilvec = 0:0.1:1;
     % randomly select neurons to silence: sample 100X
-    Nsamples = 10; % estimated ~30min for 100 samples
+    Nsamples = 100; % estimated ~30min for 100 samples
     Nneurons = SVMtrainICRC.Nneurons;
     Nsplits = size(SVMtrainICRC.spkcnt.testtrialinds,2);
 
@@ -230,7 +238,6 @@ for ises = 1:numel(nwbsessions)
                 newspkcntres = spkcntres .* sqrt(newspkcntvar./spkcntvar);
                 newspkcntICtt = mean(spkcntICtt,1)+newspkcntres;
 
-                excludeneuvar0 = 2;
                 switch excludeneuvar0
                     case 0
                         valneu = true(Nneu,1);
@@ -283,6 +290,7 @@ for ises = 1:numel(nwbsessions)
                         trainRmean = mean(tempR(:,traintrialinds),2);
                         Tp = (tempR-trainRmean)';
                 end
+                Tp(isnan(Tp))=0;
 
                 trainlabs = SVMout.trialorder(traintrialinds);
                 testlabs = SVMout.trialorder(testtrialinds);

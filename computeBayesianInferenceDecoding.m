@@ -700,8 +700,8 @@ for ises = 9:numel(nwbsessions)
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
 
     excludeneuvar0 = 2;
-    % if 0, keep all neurons; if 1, exclude 0 variance neurons in train trial
-    % types; if 2 exclude 0 variance neurons in all trial types
+    % if 0, keep all neurons; if 1, exclude zero variance neurons in train trial
+    % types; if 2 exclude zero variance neurons in all trial types
     twin = 0.4; % in sec
     testt = [106 107 110 111];
     inferencett = [1105 1109];
