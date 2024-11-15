@@ -569,7 +569,11 @@ end
 
 warning('on')
 
-%% run just SVM acros LMLV slopes
+%% run SVM acros LMLV slopes
+% HS note 241115: MEAN CENTERING PREPROC BEFORE THIS DATE DID NOT WORK AS INTENDED
+% because I had put [['Standardize', true]] in the input to templateSVM in
+% computeICtxi_SVM, this ended up standardizing (i.e., z-scoring) the input
+% data regardless of my preproc option
 if ismac
     drivepath = '/Users/hyeyoung/Library/CloudStorage/GoogleDrive-shinehyeyoung@gmail.com/My Drive/';
     codepath = '/Users/hyeyoung/Documents/CODE/Analyze_IC_OpenScope_v240130/';
@@ -582,14 +586,15 @@ addpath([codepath 'helperfunctions'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScope_spkcnt_ICwcfg1.mat'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1.mat'])
 
-for ises = 9:numel(nwbsessions)
-    clearvars -except ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
+for excludeneuvar0 = [0 2]
+
+for ises = 1:numel(nwbsessions)
+    clearvars -except excludeneuvar0 ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
     sesclk = tic;
     mousedate = nwbsessions{ises};
     fprintf('%s %d\n', mousedate, ises)
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
 
-    excludeneuvar0 = 2;
     % if 0, keep all neurons; if 1, exclude zero variance neurons in train trial
     % types; if 2 exclude zero variance neurons in all trial types
     twin = 0.4; % in sec
@@ -793,27 +798,32 @@ for ises = 9:numel(nwbsessions)
         end
 
     end
-    switch excludeneuvar0
-        case 0
-            svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
-        case 1
-            svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
-        case 2
-            svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-        otherwise
-            error('excludeneuvar0 option not recognized')
+    if islope==numel(disperses)
+        switch excludeneuvar0
+            case 0
+                svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+            case 1
+                svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+            case 2
+                svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+            otherwise
+                error('excludeneuvar0 option not recognized')
+        end
+        save(svmfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_lmlvs', '-v7.3')
+        save(svmmdlfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_models_lmlvs', '-v7.3')
     end
-    save(svmfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_lmlvs', '-v7.3')
-    save(svmmdlfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_models_lmlvs', '-v7.3')
 
     fprintf('%d/%d %s done running SVM across LMLV slopes\n', ises, numel(nwbsessions), nwbsessions{ises})
     toc(sesclk)
 end
 
 analyzeICtxi_SVM_trainICRC_lmlv
+analyzeICtxi_SVM_trainICRC_lmlv_scoresimilarity
+
+end
 
 %% run inverted cross-validation SVM acros LMLV slopes (non-overlapping training data)
 if ismac
@@ -828,14 +838,15 @@ addpath([codepath 'helperfunctions'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScope_spkcnt_ICwcfg1.mat'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1.mat'])
 
+excludeneuvar0 = 0;
+
 for ises = 1:numel(nwbsessions)
-    clearvars -except ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
+    clearvars -except excludeneuvar0 ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
     sesclk = tic;
     mousedate = nwbsessions{ises};
     fprintf('%s %d\n', mousedate, ises)
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
 
-    excludeneuvar0 = 0;
     % if 0, keep all neurons; if 1, exclude zero variance neurons in train trial
     % types; if 2 exclude zero variance neurons in all trial types
     twin = 0.4; % in sec. USING SPIKE COUNT RATHER THAN RATE FOR DECODING
@@ -1027,14 +1038,14 @@ for ises = 1:numel(nwbsessions)
         if islope==0
             switch excludeneuvar0
                 case 0
-                    svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
-                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+                    svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
                 case 1
-                    svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
-                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+                    svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
                 case 2
-                    svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
-                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+                    svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
                 otherwise
                     error('excludeneuvar0 option not recognized')
             end
@@ -1051,22 +1062,25 @@ for ises = 1:numel(nwbsessions)
         end
 
     end
-    switch excludeneuvar0
-        case 0
-            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
-        case 1
-            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
-        case 2
-            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-        otherwise
-            error('excludeneuvar0 option not recognized')
+    if islope==numel(disperses)
+        switch excludeneuvar0
+            case 0
+                svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+            case 1
+                svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+            case 2
+                svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+            otherwise
+                error('excludeneuvar0 option not recognized')
+        end
+        save(svmfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_lmlvs', '-v7.3')
+        save(svmmdlfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_models_lmlvs', '-v7.3')
     end
-    save(svmfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_lmlvs', '-v7.3')
-    save(svmmdlfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_models_lmlvs', '-v7.3')
-
     fprintf('%d/%d %s done running SVM across LMLV slopes\n', ises, numel(nwbsessions), nwbsessions{ises})
     toc(sesclk)
 end
+
+analyzeICtxi_SVM_invcv_trainICRC_lmlv

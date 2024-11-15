@@ -11,7 +11,7 @@ load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1
 
 % if 0, keep all neurons; if 1, exclude zero variance neurons in train trial
 % types; if 2 exclude zero variance neurons in all trial types
-excludeneuvar0 = 2;
+% excludeneuvar0 = 2;
 fprintf('neuron exclusion criterion %d\n', excludeneuvar0)
 
 for ises = 1:numel(nwbsessions)
@@ -103,7 +103,6 @@ for ises = 1:numel(nwbsessions)
     end
     meanvecrankpointasis = zeros(Nhireptt,Ntt);
     meanvecrankpointlmlvs = zeros(Nhireptt,Ntt,numel(disperses));
-
     rhoscoreasis = struct();
     rhoscorelmlvs = struct();
     for f = 1:numel(rhoscorefields)
