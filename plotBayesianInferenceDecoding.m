@@ -103,7 +103,7 @@ save([drivepath 'RESEARCH/logmean_logvar/OpenScope_bayesdecodespkcnt_ICwcfg1.mat
 %%
 load([drivepath 'RESEARCH/logmean_logvar/OpenScope_bayesdecodespkcnt_ICwcfg1.mat'])
 
-figure
+figure('Position', [100 100 1200 600])
 for d = 1:numel(infdecoders)
     subplot(2,4,d)
     hold all
@@ -134,3 +134,35 @@ for d = 1:numel(infdecoders)
     title(infdecoders{d})
 end
 
+figure('Position', [100 100 1200 1200])
+for d = 1:numel(infdecoders)
+    for isp = 1:4
+        switch isp
+            case 1
+                ylab = 'P(IC1|TRE1)';
+                r=1; c=1;
+            case 2
+                ylab = 'P(LC1|TRE1)';
+                r=1; c=2;
+            case 3
+                ylab = 'P(LC2|TRE2)';
+                r=2; c=3;
+            case 4
+                ylab = 'P(IC2|TRE2)';
+                r=2; c=4;
+        end
+        subplot(4,4,4*(isp-1)+d)
+        hold all
+        plot(disperses, squeeze(lmlvscmagg.(infdecoders{d}).inference(r,c,:,:)), '-')
+        plot(disperses, mean(squeeze(lmlvscmagg.(infdecoders{d}).inference(r,c,:,:)),1), 'k-', 'LineWidth', 2)
+        xl = [disperses(1) disperses(end)];
+        plot(xl, mean(squeeze(asiscmagg.(infdecoders{d}).inference(r,c,:)),1)*[1 1], 'c-', 'LineWidth', 2)
+        yl = ylim;
+        plot([1 1], yl, 'k--')
+        ylim(yl)
+        xlim([0 xl(2)])
+        xlabel('log(mean) vs log(var) slopes')
+        ylabel(ylab)
+        title(infdecoders{d})
+    end
+end

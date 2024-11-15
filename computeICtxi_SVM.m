@@ -1,8 +1,12 @@
 function [SVMout, SVM_models] = computeICtxi_SVM(tempR, trialorder, svmdesc, whichR, preproc, whichSVMkernel, cvtrials)
 sesclk = tic;
 
-Nsplits = 10;
-optimizeSVM = true;
+optimizeSVM = 2; % 0 no optimization, 1 optimize hyperparameters, 2 onevsone, 3 onevsall
+if cvtrials.loadcvpartition
+    Nsplits = size(cvtrials.testtrialinds,2);
+else
+    Nsplits = cvtrials.Nsplits;
+end
 
 % whichR = 'spkcnt';
 % if size(Rall.(ICblocks{b}),2)~=length(neu2anal)
@@ -32,6 +36,9 @@ switch svmdesc
     case 'trainIC2RC2'
         traintrialtypes = [111 110];
         probetrialtypes = [1109];
+    case 'trainBK'
+        traintrialtypes = [0, 106, 107, 110, 111];
+        probetrialtypes = [1105, 1109];
     otherwise
         error(['set ' svmdesc])
 end
@@ -40,6 +47,7 @@ Ntt = numel(traintrialtypes);
 Nprobett = numel(probetrialtypes);
 Nalltt = numel(alltrialtypes);
 
+SVMout.optimizeSVM = optimizeSVM;
 SVMout.preproc = preproc;
 SVMout.whichSVMkernel = whichSVMkernel;
 SVMout.Nneurons = Nneurons;
@@ -53,36 +61,55 @@ for typi1 = 1:Ntt
     SVMout.numtrials(typi1) = nnz(trialorder==SVMout.trialtypes(typi1));
 end
 
-% balance trials
-cftttrials = ismember(trialorder, SVMout.trialtypes);
-Ntrialspertype = min(SVMout.numtrials);
-if all(SVMout.numtrials==Ntrialspertype)
-    trials2anal = cftttrials;
-    SVMout.analtrials = find(trials2anal);
+if cvtrials.loadcvpartition
+    SVMout.analtrials = reshape( unique(cvtrials.traintrialinds(:)) ,1,[]);
+    SVMout.analtriallabels = trialorder(SVMout.analtrials);
+    Ntraintrials = size(cvtrials.traintrialinds,1);
+    Ntesttrials = size(cvtrials.testtrialinds,1);
+    Ntraintrialspertype = Ntraintrials/Ntt;
+    Ntesttrialspertype = Ntesttrials/Ntt;
+    Ntrialspertype = Ntraintrialspertype+Ntesttrialspertype;
 else
-    warning('balancing number of trials')
-    trials2anal = false(numrectrials,1);
-    for typi1 = 1:Ntt
-        trialsintype = find(trialorder==SVMout.trialtypes(typi1));
-        trialsintype = trialsintype(1:Ntrialspertype);
-        trials2anal(trialsintype) = true;
-    end
-    if all(cftttrials(trials2anal)) && ~any(trials2anal(~cftttrials))
+    % balance trials
+    cftttrials = ismember(trialorder, SVMout.trialtypes);
+    Ntrialspertype = min(SVMout.numtrials);
+    if all(SVMout.numtrials==Ntrialspertype)
+        trials2anal = cftttrials;
         SVMout.analtrials = find(trials2anal);
     else
-        error('trials to analyze was not selected correctly')
+        warning('balancing number of trials')
+        trials2anal = false(numrectrials,1);
+        for typi1 = 1:Ntt
+            trialsintype = find(trialorder==SVMout.trialtypes(typi1));
+            trialsintype = trialsintype(1:Ntrialspertype);
+            trials2anal(trialsintype) = true;
+        end
+        if all(cftttrials(trials2anal)) && ~any(trials2anal(~cftttrials))
+            SVMout.analtrials = find(trials2anal);
+        else
+            error('trials to analyze was not selected correctly')
+        end
+    end
+    SVMout.analtriallabels = trialorder(trials2anal);
+
+    % Nsplits-fold cross-validation
+    trials2analind = find(trials2anal); % consider randomizing the order of this
+
+    Ntesttrialspertype = floor(Ntrialspertype/Nsplits);
+    Ntraintrialspertype = Ntrialspertype - Ntesttrialspertype;
+
+    Ntraintrials = Ntt*Ntraintrialspertype;
+    Ntesttrials = Ntt*(Ntrialspertype-Ntraintrialspertype);
+
+    C = cvpartition(trialorder(trials2analind),'KFold',Nsplits, 'Stratify',true);
+    if ~( all(C.TrainSize==Ntraintrials) && all(C.TestSize==Ntesttrials) )
+        error('check balancing trials')
     end
 end
-SVMout.analtriallabels = trialorder(trials2anal);
 
-Ntesttrialspertype = floor(Ntrialspertype/Nsplits);
-Ntraintrialspertype = Ntrialspertype - Ntesttrialspertype;
 SVMout.Ntt = Ntt;
 SVMout.Ntrialspertype = Ntrialspertype;
 SVMout.Ntraintrialspertype = Ntraintrialspertype;
-
-Ntraintrials = Ntt*Ntraintrialspertype;
-Ntesttrials = Ntt*(Ntrialspertype-Ntraintrialspertype);
 
 % probe trials
 probetrials = ismember(trialorder, probetrialtypes);
@@ -104,14 +131,6 @@ SVMout.(whichR).testtrialinds = zeros(Ntesttrials, Nsplits);
 % SVMout.(whichR).Ylabs = cell(Ntt, Nsplits);
 SVMout.(whichR).Xall = cell(1, Nsplits);
 
-% Nsplits-fold cross-validation
-trials2analind = find(trials2anal); % consider randomizing the order of this
-if ~cvtrials.loadcvpartition
-    C = cvpartition(trialorder(trials2analind),'KFold',Nsplits, 'Stratify',true);
-    if ~( all(C.TrainSize==Ntraintrials) && all(C.TestSize==Ntesttrials) )
-        error('check balancing trials')
-    end
-end
 for isplit = 1:Nsplits
     close all
     ttclk = tic;
@@ -200,22 +219,38 @@ for isplit = 1:Nsplits
     Ylabs = unique(Y);
     SVMout.(whichR).Ylabs = Ylabs;
     
+    % HS 241115: when [[ 'Standardize',true ]], data is z-scored. 
+    % mean centering didn't actually work
     switch whichSVMkernel
         case 'RBF'
-            t = templateSVM('Standardize',true,'KernelFunction', 'rbf');
+            t = templateSVM('KernelFunction', 'rbf'); % 'Standardize' is false by default
         case 'Linear'
-            t = templateSVM('Standardize',true,'KernelFunction', 'linear');
+            t = templateSVM('KernelFunction', 'linear');
         case 'Poly2'
-            t = templateSVM('Standardize',true,'KernelFunction', 'polynomial' , 'PolynomialOrder', 2);
+            t = templateSVM('KernelFunction', 'polynomial' , 'PolynomialOrder', 2);
     end
-    if optimizeSVM
+    switch optimizeSVM
+        case 0
+        SVMModel = fitcecoc(X,Y,'Learners',t,'FitPosterior',false, 'ClassNames', Ylabs, 'Verbose',0);
+        case 1
         SVMModel = fitcecoc(X,Y,'Learners',t,'FitPosterior',false, ...
             'ClassNames', Ylabs, 'Verbose',0, 'OptimizeHyperparameters', 'auto', ...
-            'HyperparameterOptimizationOptions', struct('UseParallel',true, 'ShowPlots', false));
-    else
-        SVMModel = fitcecoc(X,Y,'Learners',t,'FitPosterior',false, 'ClassNames', Ylabs, 'Verbose',0);
+            'HyperparameterOptimizationOptions', struct('UseParallel',true, 'ShowPlots', false, 'Verbose',0));
+        case 2
+        SVMModel = fitcecoc(X,Y,'Coding','onevsone', 'Learners',t,'FitPosterior',false, ...
+            'ClassNames', Ylabs, 'Verbose',0, 'OptimizeHyperparameters', {'BoxConstraint','KernelScale'}, ...
+            'HyperparameterOptimizationOptions', struct('UseParallel',true, 'ShowPlots', false, 'Verbose',0));
+        case 3
+        SVMModel = fitcecoc(X,Y,'Coding','onevsall', 'Learners',t,'FitPosterior',false, ...
+            'ClassNames', Ylabs, 'Verbose',0, 'OptimizeHyperparameters', {'BoxConstraint','KernelScale'}, ...
+            'HyperparameterOptimizationOptions', struct('UseParallel',true, 'ShowPlots', false, 'Verbose',0));
     end
-    %                 CVMdl = crossval(SVMModel);
+    % optimized hyperparameters: Learners = 'svm' (default) — {'BoxConstraint','KernelScale'}
+    % note, hyperparameter optimization entails five-fold cross-validation
+    % Find hyperparameters that minimize five-fold cross-validation loss by 
+    % using automatic hyperparameter optimization. 
+    % CVMdl = crossval(SVMModel);
+    % isequal(CVMdl.Y, SVMModel.Y)
     
     
     SVM_models.(whichR){isplit} = SVMModel;

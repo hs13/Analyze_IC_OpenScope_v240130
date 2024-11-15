@@ -18,12 +18,6 @@ for ises = 1:numel(nwbsessions)
     fprintf('%s %d\n', mousedate, ises)
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
 
-    computeSVM = false;
-    if computeSVM
-        preproc = 'meancenter';
-        whichSVMkernel = 'Linear';
-        svmdesc = 'trainICRC';
-    end
     testt = [106 107 110 111];
     inferencett = [1105 1109];
 
@@ -53,10 +47,6 @@ for ises = 1:numel(nwbsessions)
     end
     spkcntICtt = permute(tempspkcnt, [1 3 2]); % Nrep * Nnstt * Nneu
 
-    if computeSVM
-        SVMtrainICRC_lmlvs = struct();
-        SVMtrainICRC_models_lmlvs = struct();
-    end
     validneurons_lmlvs = true(Nneu,length(disperses));
     newspkcnt_lmlvs = cell(Nhireptt,length(disperses));
     bayesimage_lmlvs = struct();
@@ -106,84 +96,6 @@ for ises = 1:numel(nwbsessions)
         % plot(log(mean(spkcntIChiV1agg{ises}{typi},1)), log(var(spkcntIChiV1agg{ises}{typi},0,1)), 'k.')
         % plot(log(mean(spkcntlmlvs{typi},1)), log(var(spkcntlmlvs{typi},0,1)), 'r.')
         % plot(log(mean(spkcntlmlvs{typi}(:,tempinvalneu),1)), log(var(spkcntlmlvs{typi}(:,tempinvalneu),0,1)), 'ro')
-
-        %% comparison point: linear SVM ~7min per slope
-        % load(['S:\OpenScopeData\00248_v240130\SVM_trainICRC_selectareas\' nwbsessions{ises} '\SVM_trainICRC_VISpRS_Linear_zscore_ICwcfg1.mat'])
-        % SVMtrainICRC_models is 14 MB
-        if computeSVM % && (islope==0 || mod(disperses(islope)*10,5)==0)
-            kfold = size(SVMtrainICRC.spkcnt.testtrialinds,2);
-            traintrials = false(length(trialorder),kfold);
-            testtrials = false(length(trialorder),kfold);
-            for itt = 1:Ntt
-                trialsoind = find(SVMtrainICRC.trialorder==testt(itt));
-                typi = hireptt==testt(itt);
-                ntrials = size(spkcntlmlvs{typi},1);
-                temptesttrials = false(ntrials,kfold);
-                for k = 1:kfold
-                    temptesttrials(:,k) = ismember(trialsoind, SVMtrainICRC.spkcnt.testtrialinds(:,k));
-                end
-                traintrials(trialorder==testt(itt),:) = ~temptesttrials;
-                testtrials(trialorder==testt(itt),:) = temptesttrials;
-            end
-            traintrialinds = zeros(max(sum(traintrials,1)), kfold);
-            testtrialinds = zeros(max(sum(testtrials,1)), kfold);
-            for k = 1:kfold
-                traintrialinds(:,k) = find(traintrials(:,k));
-                testtrialinds(:,k) = find(testtrials(:,k));
-            end
-
-            cvtrials = struct();
-            cvtrials.loadcvpartition = true;
-            cvtrials.traintrialinds = traintrialinds;
-            cvtrials.testtrialinds = testtrialinds;
-
-            [SVMtrainICRC, SVMtrainICRC_models] = computeICtxi_SVM(tempR, trialorder, ...
-                svmdesc, 'spkcnt', preproc, whichSVMkernel, cvtrials);
-
-            if ~isequal(SVMtrainICRC.trialtypes, testt)
-                error('mismatch in test trial types: check that you loaded trainICRC')
-            end
-
-            % train accuracy
-            trainlabs = SVMtrainICRC.trialorder(SVMtrainICRC.spkcnt.traintrialinds);
-            trainpred = SVMtrainICRC.spkcnt.train.label;
-            trainacc = zeros(Ntt);
-            for itt = 1:Ntt
-                trialsoi = trainlabs==testt(itt);
-                [v,c]=uniquecnt(trainpred(trialsoi));
-                trainacc(itt, ismember(testt,v)) = c/nnz(trialsoi);
-            end
-
-            % test accuracy
-            testlabs = SVMtrainICRC.trialorder(SVMtrainICRC.spkcnt.testtrialinds);
-            testpred = SVMtrainICRC.spkcnt.test.label;
-            testacc = zeros(Ntt);
-            for itt = 1:Ntt
-                trialsoi = testlabs==testt(itt);
-                [v,c]=uniquecnt(testpred(trialsoi));
-                testacc(itt, ismember(testt,v)) = c/nnz(trialsoi);
-            end
-
-            % inference decoding
-            inftrials = ismember(SVMtrainICRC.trialorder, inferencett);
-            infpred = SVMtrainICRC.spkcnt.all.label(inftrials,:);
-            infperf = zeros(numel(inferencett), Ntt);
-            for itt = 1:numel(inferencett)
-                trialsoi = SVMtrainICRC.trialorder(inftrials)==inferencett(itt);
-                [v,c]=uniquecnt(infpred(trialsoi));
-                infperf(itt, ismember(testt,v)) = c/nnz(trialsoi);
-            end
-
-            disp('SVM trainacc')
-            disp(mean(trainacc,3))
-            disp('SVM testacc')
-            disp(mean(testacc,3))
-            disp('SVM infperf')
-            disp(mean(infperf,3))
-        else
-            SVMtrainICRC = struct();
-            SVMtrainICRC_models = struct();
-        end
 
         %% Bayesian image decoding (inspired by position decoding in hippocampus literature, e.g., Buzsaki lab, Fenton lab)
 
@@ -631,30 +543,15 @@ colormap(redcm)
         %% UMAP + Bayesian decoding
 
         if islope==0
-            if computeSVM
-                svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
-                svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
-                save(svmfn, 'preproc', 'whichSVMkernel', 'SVMtrainICRC', '-v7.3')
-                save(svmmdlfn, 'preproc', 'whichSVMkernel', 'SVMtrainICRC_models', '-v7.3')
-            end
-
             bayesfn = strcat(pathpp, 'bayesinferencedecoding_V1.mat');
             save(bayesfn, 'bayesimage', 'naivegauss', 'mvnbayes', 'pcanaivegauss')
         else
             if islope==1
-                if computeSVM
-                    SVMtrainICRC_lmlvs = SVMtrainICRC;
-                    SVMtrainICRC_models_lmlvs = SVMtrainICRC_models;
-                end
                 bayesimage_lmlvs = bayesimage;
                 naivegauss_lmlvs = naivegauss;
                 mvnbayes_lmlvs = mvnbayes;
                 pcanaivegauss_lmlvs = pcanaivegauss;
             else
-                if computeSVM
-                    SVMtrainICRC_lmlvs(islope) = SVMtrainICRC;
-                    SVMtrainICRC_models_lmlvs(islope) = SVMtrainICRC_models;
-                end
                 bayesimage_lmlvs(islope) = bayesimage;
                 naivegauss_lmlvs(islope) = naivegauss;
                 mvnbayes_lmlvs(islope) = mvnbayes;
@@ -663,13 +560,6 @@ colormap(redcm)
         end
 
     end
-    if computeSVM
-        svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-        svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-        save(svmfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_lmlvs', '-v7.3')
-        save(svmmdlfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_models_lmlvs', '-v7.3')
-    end
-
     bayesfn = strcat(pathpp, 'bayesinferencedecoding_V1_lmlvslopes.mat');
     save(bayesfn, 'disperses', 'validneurons_lmlvs', 'newspkcnt_lmlvs', ...
         'bayesimage_lmlvs', 'naivegauss_lmlvs', 'mvnbayes_lmlvs', 'pcanaivegauss_lmlvs', '-v7.3')
@@ -924,3 +814,259 @@ for ises = 9:numel(nwbsessions)
 end
 
 analyzeICtxi_SVM_trainICRC_lmlv
+
+%% run inverted cross-validation SVM acros LMLV slopes (non-overlapping training data)
+if ismac
+    drivepath = '/Users/hyeyoung/Library/CloudStorage/GoogleDrive-shinehyeyoung@gmail.com/My Drive/';
+    codepath = '/Users/hyeyoung/Documents/CODE/Analyze_IC_OpenScope_v240130/';
+else
+    drivepath = 'G:/My Drive/';
+    codepath = 'C:\Users\USER\GitHub\';
+end
+
+addpath([codepath 'helperfunctions'])
+load([drivepath 'RESEARCH/logmean_logvar/OpenScope_spkcnt_ICwcfg1.mat'])
+load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1.mat'])
+
+for ises = 1:numel(nwbsessions)
+    clearvars -except ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
+    sesclk = tic;
+    mousedate = nwbsessions{ises};
+    fprintf('%s %d\n', mousedate, ises)
+    pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
+
+    excludeneuvar0 = 0;
+    % if 0, keep all neurons; if 1, exclude zero variance neurons in train trial
+    % types; if 2 exclude zero variance neurons in all trial types
+    twin = 0.4; % in sec. USING SPIKE COUNT RATHER THAN RATE FOR DECODING
+    testt = [106 107 110 111];
+    inferencett = [1105 1109];
+
+    disperses = -1:0.5:2;
+    Ntt = numel(testt);
+    Nhireptt = numel(hireptt);
+
+    try
+        tempspkcnt = cat(3,spkcntIChiV1agg{ises}{:});
+        Nrep = size(tempspkcnt,1);
+        Nneu = size(tempspkcnt,2);
+    catch
+        % trial repetitions were not the same across trial types
+        csz = cellfun(@size, spkcntIChiV1agg{ises}, 'UniformOutput', false);
+        csz = cat(1,csz{:});
+        Nrep = min(csz(:,1));
+        if all(csz(:,2)==csz(1,2))
+            Nneu = csz(1,2);
+        else
+            error('check number of neurons in session %d', ises)
+        end
+        tempspkcnt = NaN(Nrep, Nneu, Nhireptt);
+        for n = 1:Nhireptt
+            tempspkcnt(:,:,n) = spkcntIChiV1agg{ises}{n}(1:Nrep,:);
+        end
+    end
+    spkcntICtt = permute(tempspkcnt, [1 3 2]); % Nrep * Nnstt * Nneu
+
+    SVMtrainICRC_lmlvs = struct();
+    SVMtrainICRC_models_lmlvs = struct();
+    for islope = 0:numel(disperses)
+        if islope==0
+            spkcntlmlvs = spkcntIChiV1agg{ises};
+            tempR = reshape(spkcntICtt, Nrep*Nhireptt, Nneu)';
+            trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
+        else
+            % fit log(mean) vs log(var)
+            spkcntres = spkcntICtt - mean(spkcntICtt,1); % Nrep * Nnstt * Nneu
+            spkcntmu = mean(spkcntICtt,1); % 1XNimg X Nneurons
+            spkcntvar = var(spkcntICtt,0,1); % 1XNimg X Nneurons
+            temp = spkcntvar; temp(spkcntvar==0)=NaN;
+            totvar = nanmean(temp,2);
+
+            tempx = log10(spkcntmu);
+            tempx(spkcntmu==0) = NaN;
+            meanx = squeeze(nanmean(tempx,3)); % average across neurons: 1XNimg
+
+            Avec = lmlvslope(ises,:);
+            Bvec = lmlvyintercept(ises,:);
+            Cvec = disperses(islope)*ones(1,Nhireptt);
+            Dvec = (Avec-Cvec).*meanx + Bvec;
+            newspkcntvar = 10.^( (Cvec./Avec).*(log10(spkcntvar)-Bvec) + Dvec);
+            newspkcntres = spkcntres .* sqrt(newspkcntvar./spkcntvar);
+            newspkcntICtt = mean(spkcntICtt,1)+newspkcntres;
+
+            % note, fitcsvm removes entire rows of data corresponding to a missing response. 
+            % rows correspond to observations
+            % as such, if there are any neurons where newspkcntvar is <=0 or nan 
+            % for any trial type, all trials in that trial type will be removed
+            % When computing total weights (see the next bullets), 
+            % fitcsvm ignores any weight corresponding to an observation 
+            % with at least one missing predictor. 
+            % This action can lead to unbalanced prior probabilities in 
+            % balanced-class problems. Consequently, observation box constraints might not equal BoxConstraint.
+            switch excludeneuvar0
+                case 0
+                    valneu = true(Nneu,1);
+                case 1
+                    valneu = squeeze(all(newspkcntvar(1,ismember(hireptt,testt),:)>0 & isfinite(newspkcntvar(1,ismember(hireptt,testt),:)), 2));
+                case 2
+                    valneu = squeeze(all(newspkcntvar(1,:,:)>0 & isfinite(newspkcntvar(1,:,:)), 2));
+                otherwise
+                    error('excludeneuvar0 option not recognized')
+            end
+
+            spkcntlmlvs = cell(Nhireptt,1);
+            for n = 1:Nhireptt
+                spkcntlmlvs{n} = squeeze(newspkcntICtt(:,n,valneu));
+            end
+
+            tempR = reshape(newspkcntICtt(:,:,valneu), Nrep*Nhireptt, nnz(valneu))';
+            tempR(~isfinite(tempR)) = NaN;
+            trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
+        end
+        % typi = 4;
+        % figure; hold all
+        % plot(log(mean(spkcntIChiV1agg{ises}{typi},1)), log(var(spkcntIChiV1agg{ises}{typi},0,1)), 'k.')
+        % plot(log(mean(spkcntlmlvs{typi},1)), log(var(spkcntlmlvs{typi},0,1)), 'r.')
+
+        %% comparison point: linear SVM ~7min per slope
+        preproc = 'meancenter';
+        whichSVMkernel = 'Linear';
+        svmdesc = 'trainICRC';
+        Nsplits = 5;
+
+        % balance trials
+        cftttrials = ismember(trialorder, testt);
+        [v,numtrials]=uniquecnt(trialorder(cftttrials));
+        Ntrialspertype = min(numtrials);
+        if all(numtrials==Ntrialspertype)
+            trials2anal = cftttrials;
+        else
+            warning('balancing number of trials')
+            trials2anal = false(length(trialorder),1);
+            for typi1 = 1:Ntt
+                trialsintype = find(trialorder==SVMout.trialtypes(typi1));
+                trialsintype = trialsintype(1:Ntrialspertype);
+                trials2anal(trialsintype) = true;
+            end
+            if all(cftttrials(trials2anal)) && ~any(trials2anal(~cftttrials))
+            else
+                error('trials to analyze was not selected correctly')
+            end
+        end
+        trials2analind = find(trials2anal); % consider randomizing the order of this
+
+        C = cvpartition(trialorder(trials2analind),'KFold',Nsplits, 'Stratify',true);
+        traintrialinds = zeros(min(C.TrainSize), Nsplits);
+        testtrialinds = zeros(min(C.TestSize), Nsplits);
+        for isplit = 1:Nsplits
+            idxTrain = training(C,isplit);
+            traintrialinds(:,isplit) = reshape( trials2analind(idxTrain) ,[],1);
+            idxTest = test(C,isplit);
+            testtrialinds(:,isplit) = reshape( trials2analind(idxTest) ,[],1);
+        end
+
+        % 
+        cvtrials = struct();
+        cvtrials.loadcvpartition = true;
+        cvtrials.traintrialinds = testtrialinds; % NOTE THE SWITCH!
+        cvtrials.testtrialinds = traintrialinds; % NOTE THE SWITCH!
+        disp('inverting cross-validation: use non-overlapping training datasets')
+        % SVMtrainICRC_models is 14 MB
+        [SVMtrainICRC, SVMtrainICRC_models] = computeICtxi_SVM(tempR, trialorder, ...
+            svmdesc, 'spkcnt', preproc, whichSVMkernel, cvtrials);
+        if islope>0 %&& excludeneuvar0>0
+            SVMtrainICRC.valneu = valneu;
+        end
+
+        if ~isequal(SVMtrainICRC.trialtypes, testt)
+            error('mismatch in test trial types: check that you loaded trainICRC')
+        end
+
+        % train accuracy
+        trainlabs = SVMtrainICRC.trialorder(SVMtrainICRC.spkcnt.traintrialinds);
+        trainpred = SVMtrainICRC.spkcnt.train.label;
+        trainacc = zeros(Ntt);
+        for itt = 1:Ntt
+            trialsoi = trainlabs==testt(itt);
+            [v,c]=uniquecnt(trainpred(trialsoi));
+            trainacc(itt, ismember(testt,v)) = c/nnz(trialsoi);
+        end
+
+        % test accuracy
+        testlabs = SVMtrainICRC.trialorder(SVMtrainICRC.spkcnt.testtrialinds);
+        testpred = SVMtrainICRC.spkcnt.test.label;
+        testacc = zeros(Ntt);
+        for itt = 1:Ntt
+            trialsoi = testlabs==testt(itt);
+            [v,c]=uniquecnt(testpred(trialsoi));
+            testacc(itt, ismember(testt,v)) = c/nnz(trialsoi);
+        end
+
+        % inference decoding
+        inftrials = ismember(SVMtrainICRC.trialorder, inferencett);
+        infpred = SVMtrainICRC.spkcnt.all.label(inftrials,:);
+        infperf = zeros(numel(inferencett), Ntt);
+        for itt = 1:numel(inferencett)
+            trialsoi = SVMtrainICRC.trialorder(inftrials)==inferencett(itt);
+            [v,c]=uniquecnt(infpred(trialsoi,:));
+            infperf(itt, ismember(testt,v)) = c/(size(infpred,2)*nnz(trialsoi));
+        end
+
+        if islope==0
+        fprintf('%d/%d %s as-is\n', ises, numel(nwbsessions), nwbsessions{ises})
+        else
+        fprintf('%d/%d %s LMLV slope %.2f\n', ises, numel(nwbsessions), nwbsessions{ises}, disperses(islope))
+        end
+        disp('SVM trainacc')
+        disp(mean(trainacc,3))
+        disp('SVM testacc')
+        disp(mean(testacc,3))
+        disp('SVM infperf')
+        disp(mean(infperf,3))
+
+        if islope==0
+            switch excludeneuvar0
+                case 0
+                    svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+                case 1
+                    svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+                case 2
+                    svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+                otherwise
+                    error('excludeneuvar0 option not recognized')
+            end
+            save(svmfn, 'preproc', 'whichSVMkernel', 'SVMtrainICRC', '-v7.3')
+            save(svmmdlfn, 'preproc', 'whichSVMkernel', 'SVMtrainICRC_models', '-v7.3')
+        else
+            if islope==1
+                SVMtrainICRC_lmlvs = SVMtrainICRC;
+                SVMtrainICRC_models_lmlvs = SVMtrainICRC_models;
+            else
+                SVMtrainICRC_lmlvs(islope) = SVMtrainICRC;
+                SVMtrainICRC_models_lmlvs(islope) = SVMtrainICRC_models;
+            end
+        end
+
+    end
+    switch excludeneuvar0
+        case 0
+            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+        case 1
+            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+        case 2
+            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+        otherwise
+            error('excludeneuvar0 option not recognized')
+    end
+    save(svmfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_lmlvs', '-v7.3')
+    save(svmmdlfn, 'disperses', 'preproc', 'whichSVMkernel', 'SVMtrainICRC_models_lmlvs', '-v7.3')
+
+    fprintf('%d/%d %s done running SVM across LMLV slopes\n', ises, numel(nwbsessions), nwbsessions{ises})
+    toc(sesclk)
+end

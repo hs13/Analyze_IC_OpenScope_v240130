@@ -9,9 +9,9 @@ addpath([codepath 'helperfunctions'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScope_spkcnt_ICwcfg1.mat'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1.mat'])
 
-excludeneuvar0 = 0;
 % if 0, keep all neurons; if 1, exclude zero variance neurons in train trial
 % types; if 2 exclude zero variance neurons in all trial types
+excludeneuvar0 = 2;
 fprintf('neuron exclusion criterion %d\n', excludeneuvar0)
 
 % ises = 3;
@@ -23,8 +23,8 @@ for ises = 1:numel(nwbsessions)
     clearvars -except excludeneuvar0 ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
     sesclk = tic;
     mousedate = nwbsessions{ises};
-    fprintf('%s %d\n', mousedate, ises)
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
+    fprintf('%s %d\n', mousedate, ises)
 
     pltses = false;
     preproc = 'meancenter';
@@ -36,19 +36,28 @@ for ises = 1:numel(nwbsessions)
             svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
             svmlmlvfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
             svmmdllmlvfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+            silrandfn = strcat(pathpp, 'randomsilencing_SVM_trainICRC_lmlvslopes_incl.mat');
         case 1
             svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
             svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
             svmlmlvfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
             svmmdllmlvfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+            silrandfn = strcat(pathpp, 'randomsilencing_SVM_trainICRC_lmlvslopes.mat_excltt');
         case 2
             svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
             svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
             svmlmlvfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
             svmmdllmlvfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+            silrandfn = strcat(pathpp, 'randomsilencing_SVM_trainICRC_lmlvslopes_excl.mat');
         otherwise
             error('excludeneuvar0 option not recognized')
     end
+
+    if exist(silrandfn, 'file')
+        fprintf('excludeneuvar0 version %d random silencing SVM already calculated\n', excludeneuvar0)
+        continue
+    end
+
     load(svmfn)
     load(svmmdlfn)
     load(svmlmlvfn)
@@ -71,8 +80,12 @@ for ises = 1:numel(nwbsessions)
     for islope = 0:numel(disperses)
         if islope==0
             SVMout = SVMtrainICRC;
+            SVM_models = SVMtrainICRC_models.spkcnt;
+            valneu = true(Nneurons,1);
         else
             SVMout = SVMtrainICRC_lmlvs(islope);
+            SVM_models = SVMtrainICRC_models_lmlvs(islope).spkcnt;
+            valneu = SVMout.valneu;
         end
         for isplit = 1:Nsplits
             if ~isequal(unique(SVMout.spkcnt.all.label(:,isplit)), testt')
@@ -155,27 +168,26 @@ for ises = 1:numel(nwbsessions)
     Nneurons = SVMtrainICRC.Nneurons;
     Nsplits = size(SVMtrainICRC.spkcnt.testtrialinds,2);
 
-    try
-        tempspkcnt = cat(3,spkcntIChiV1agg{ises}{:});
-        Nrep = size(tempspkcnt,1);
-        Nneu = size(tempspkcnt,2);
-    catch
-        % trial repetitions were not the same across trial types
-        csz = cellfun(@size, spkcntIChiV1agg{ises}, 'UniformOutput', false);
-        csz = cat(1,csz{:});
-        Nrep = min(csz(:,1));
-        if all(csz(:,2)==csz(1,2))
-            Nneu = csz(1,2);
-        else
-            error('check number of neurons in session %d', ises)
-        end
-        tempspkcnt = NaN(Nrep, Nneu, Nhireptt);
-        for n = 1:Nhireptt
-            tempspkcnt(:,:,n) = spkcntIChiV1agg{ises}{n}(1:Nrep,:);
-        end
+try
+    tempspkcnt = cat(3,spkcntIChiV1agg{ises}{:});
+    Nrep = size(tempspkcnt,1);
+    Nneu = size(tempspkcnt,2);
+catch
+    % trial repetitions were not the same across trial types
+    csz = cellfun(@size, spkcntIChiV1agg{ises}, 'UniformOutput', false);
+    csz = cat(1,csz{:});
+    Nrep = min(csz(:,1));
+    if all(csz(:,2)==csz(1,2))
+        Nneu = csz(1,2);
+    else
+        error('check number of neurons in session %d', ises)
     end
-    spkcntICtt = permute(tempspkcnt, [1 3 2]); % Nrep * Nnstt * Nneu
-
+    tempspkcnt = NaN(Nrep, Nneu, Nhireptt);
+    for n = 1:Nhireptt
+        tempspkcnt(:,:,n) = spkcntIChiV1agg{ises}{n}(1:Nrep,:);
+    end
+end
+spkcntICtt = permute(tempspkcnt, [1 3 2]); % Nrep * Nnstt * Nneu
 
     % initialize
     silrandtraincmasis = NaN(Nsamples, numel(propneusilvec), Ntt, Ntt);
@@ -199,68 +211,68 @@ for ises = 1:numel(nwbsessions)
         silrandinfperflmlvs{islope} = NaN(Nsamples, numel(propneusilvec));
     end
     silrandclk = tic;
-    for n = 1:length(propneusilvec)
-        propneu2sil = propneusilvec(n);
-        if propneu2sil==0
-            neu2silmat = false(Nneurons,1);
-        elseif propneu2sil==1
-            neu2silmat = true(Nneurons,1);
+    for islope = 0:numel(disperses)
+        tic
+        if islope==0
+            tempR = reshape(spkcntICtt, Nrep*Nhireptt, Nneu)';
+            trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
         else
-            neu2silmat = false(Nneurons, Nsamples);
-            for s = 1:Nsamples
-                neurand = randperm(Nneurons, round(propneu2sil*Nneurons));
-                neu2silmat(neurand,s) = true;
+            % fit log(mean) vs log(var)
+            spkcntres = spkcntICtt - mean(spkcntICtt,1); % Nrep * Nnstt * Nneu
+            spkcntmu = mean(spkcntICtt,1); % 1XNimg X Nneurons
+            spkcntvar = var(spkcntICtt,0,1); % 1XNimg X Nneurons
+            temp = spkcntvar; temp(spkcntvar==0)=NaN;
+            totvar = nanmean(temp,2);
+
+            tempx = log10(spkcntmu);
+            tempx(spkcntmu==0) = NaN;
+            meanx = squeeze(nanmean(tempx,3)); % average across neurons: 1XNimg
+
+            Avec = lmlvslope(ises,:);
+            Bvec = lmlvyintercept(ises,:);
+            Cvec = disperses(islope)*ones(1,Nhireptt);
+            Dvec = (Avec-Cvec).*meanx + Bvec;
+            newspkcntvar = 10.^( (Cvec./Avec).*(log10(spkcntvar)-Bvec) + Dvec);
+            newspkcntres = spkcntres .* sqrt(newspkcntvar./spkcntvar);
+            newspkcntICtt = mean(spkcntICtt,1)+newspkcntres;
+
+            switch excludeneuvar0
+                case 0
+                    valneu = true(Nneu,1);
+                case 1
+                    valneu = squeeze(all(newspkcntvar(1,ismember(hireptt,testt),:)>0 & isfinite(newspkcntvar(1,ismember(hireptt,testt),:)), 2));
+                case 2
+                    valneu = squeeze(all(newspkcntvar(1,:,:)>0 & isfinite(newspkcntvar(1,:,:)), 2));
+                otherwise
+                    error('excludeneuvar0 option not recognized')
             end
+
+            tempR = reshape(newspkcntICtt(:,:,valneu), Nrep*Nhireptt, nnz(valneu))';
+            trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
         end
 
-        for islope = 0:numel(disperses)
-            tic
-            if islope==0
-                tempR = reshape(spkcntICtt, Nrep*Nhireptt, Nneu)';
-                trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
+        if islope==0
+            SVMout = SVMtrainICRC;
+            SVM_models = SVMtrainICRC_models.spkcnt;
+            valneu = true(Nneurons,1);
+        else
+            SVMout = SVMtrainICRC_lmlvs(islope);
+            SVM_models = SVMtrainICRC_models_lmlvs(islope).spkcnt;
+            valneu = SVMout.valneu;
+        end
+
+        for n = 1:length(propneusilvec)
+            propneu2sil = propneusilvec(n);
+            if propneu2sil==0
+                neu2silmat = false(Nneurons,1);
+            elseif propneu2sil==1
+                neu2silmat = true(Nneurons,1);
             else
-                % fit log(mean) vs log(var)
-                spkcntres = spkcntICtt - mean(spkcntICtt,1); % Nrep * Nnstt * Nneu
-                spkcntmu = mean(spkcntICtt,1); % 1XNimg X Nneurons
-                spkcntvar = var(spkcntICtt,0,1); % 1XNimg X Nneurons
-                temp = spkcntvar; temp(spkcntvar==0)=NaN;
-                totvar = nanmean(temp,2);
-
-                tempx = log10(spkcntmu);
-                tempx(spkcntmu==0) = NaN;
-                meanx = squeeze(nanmean(tempx,3)); % average across neurons: 1XNimg
-
-                Avec = lmlvslope(ises,:);
-                Bvec = lmlvyintercept(ises,:);
-                Cvec = disperses(islope)*ones(1,Nhireptt);
-                Dvec = (Avec-Cvec).*meanx + Bvec;
-                newspkcntvar = 10.^( (Cvec./Avec).*(log10(spkcntvar)-Bvec) + Dvec);
-                newspkcntres = spkcntres .* sqrt(newspkcntvar./spkcntvar);
-                newspkcntICtt = mean(spkcntICtt,1)+newspkcntres;
-
-                switch excludeneuvar0
-                    case 0
-                        valneu = true(Nneu,1);
-                    case 1
-                        valneu = squeeze(all(newspkcntvar(1,ismember(hireptt,testt),:)>0 & isfinite(newspkcntvar(1,ismember(hireptt,testt),:)), 2));
-                    case 2
-                        valneu = squeeze(all(newspkcntvar(1,:,:)>0 & isfinite(newspkcntvar(1,:,:)), 2));
-                    otherwise
-                        error('excludeneuvar0 option not recognized')
+                neu2silmat = false(Nneurons, Nsamples);
+                for s = 1:Nsamples
+                    neurand = randperm(Nneurons, round(propneu2sil*Nneurons));
+                    neu2silmat(neurand,s) = true;
                 end
-
-                tempR = reshape(newspkcntICtt(:,:,valneu), Nrep*Nhireptt, nnz(valneu))';
-                trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
-            end
-
-            if islope==0
-                SVMout = SVMtrainICRC;
-                SVM_models = SVMtrainICRC_models.spkcnt;
-                valneu = true(Nneurons,1);
-            else
-                SVMout = SVMtrainICRC_lmlvs(islope);
-                SVM_models = SVMtrainICRC_models_lmlvs(islope).spkcnt;
-                valneu = SVMout.valneu;
             end
 
             trainaccpd = NaN(Nsamples, Ntt,Ntt, Nsplits);
@@ -466,7 +478,8 @@ for ises = 1:numel(nwbsessions)
     end
 
     %%
-    save([pathpp 'randomsilencing_SVM_trainICRC_lmlvslopes.mat'], ...
+    save(silrandfn, 'excludeneuvar0', 'traincmasis', 'testcmasis', 'infcmasis', ...
+        'trainperfasis', 'testperfasis', 'infperfasis', ...
         'traincmlmlvs', 'testcmlmlvs', 'infcmlmlvs', ...
         'trainperflmlvs', 'testperflmlvs', 'infperflmlvs', ...
         'disperses', 'propneusilvec', 'silrandtraincmasis', 'silrandtestcmasis', 'silrandinfcmasis', ...
