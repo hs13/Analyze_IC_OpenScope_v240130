@@ -13,7 +13,7 @@ Nsessions = numel(nwbsessions);
 
 % if 0, keep all neurons; if 1, exclude zero variance neurons in train trial
 % types; if 2 exclude zero variance neurons in all trial types
-excludeneuvar0 = 2;
+excludeneuvar0 = 0;
 fprintf('neuron exclusion criterion %d\n', excludeneuvar0)
 
 silrandagg = struct();

@@ -17,7 +17,7 @@ load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1
 fprintf('neuron exclusion criterion %d\n', excludeneuvar0)
 
 for ises = 1:numel(nwbsessions)
-    clearvars -except excludeneuvar0 ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
+    clearvars -except excludeneuvar0 optimizeSVM ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
     sesclk = tic;
     mousedate = nwbsessions{ises};
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
@@ -27,31 +27,46 @@ for ises = 1:numel(nwbsessions)
     preproc = 'meancenter';
     whichSVMkernel = 'Linear';
     svmdesc = 'trainICRC';
+
+    % optimizeSVM: 0 no optimization, 1 optimize hyperparameters, 2 onevsone, 3 onevsall
+    switch optimizeSVM
+        case 0
+            optoptim = '_nooptim';
+        case 1
+            optoptim = '_alloptim';
+        case 2
+            optoptim = '';
+        case 3
+            optoptim = '_onevsall';
+        otherwise
+            error('optimizeSVM option %d not recognized', optimizeSVM)
+    end
+
     switch excludeneuvar0
         case 0
-            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
-            svmlmlvfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
-            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
-            perffn = strcat(pathpp, 'perf_SVM_invcv_trainICRC_lmlvslopes_incl.mat');
-            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC_lmlvslopes_incl.mat');
-            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICRC_lmlvslopes_incl.mat');
+            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+            svmlmlvfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+            perffn = strcat(pathpp, 'perf_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_incl.mat');
+            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_incl.mat');
+            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_incl.mat');
         case 1
-            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
-            svmlmlvfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
-            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
-            perffn = strcat(pathpp, 'perf_SVM_invcv_trainICRC_lmlvslopes_excltt.mat');
-            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC_lmlvslopes.mat_excltt');
-            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICRC_lmlvslopes.mat_excltt');
+            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+            svmlmlvfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+            perffn = strcat(pathpp, 'perf_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_excltt.mat');
+            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC', optoptim, '_lmlvslopes.mat_excltt');
+            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICRC', optoptim, '_lmlvslopes.mat_excltt');
         case 2
-            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
-            svmlmlvfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-            perffn = strcat(pathpp, 'perf_SVM_invcv_trainICRC_lmlvslopes_excl.mat');
-            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC_lmlvslopes_excl.mat');
-            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICRC_lmlvslopes_excl.mat');
+            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+            svmlmlvfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+            perffn = strcat(pathpp, 'perf_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_excl.mat');
+            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_excl.mat');
+            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICR', optoptim, 'C_lmlvslopes_excl.mat');
         otherwise
             error('excludeneuvar0 option not recognized')
     end
@@ -175,7 +190,7 @@ for ises = 1:numel(nwbsessions)
     % parametrically change proportion silenced
     propneusilvec = 0:0.1:1;
     % randomly select neurons to silence: sample 100X
-    Nsamples = 10; % estimated ~30min for 100 samples
+    Nsamples = 1; % estimated ~30min for 100 samples
     Nsplits = size(SVMtrainICRC.spkcnt.testtrialinds,2);
 
 try

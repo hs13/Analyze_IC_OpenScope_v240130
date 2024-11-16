@@ -715,12 +715,28 @@ for ises = 1:numel(nwbsessions)
         svmdesc = 'trainICRC';
 
         cvtrials = struct();
+        cvtrials.optimizeSVM = 2;
         cvtrials.loadcvpartition = true;
         cvtrials.traintrialinds = traintrialinds;
         cvtrials.testtrialinds = testtrialinds;
         % SVMtrainICRC_models is 14 MB
         [SVMtrainICRC, SVMtrainICRC_models] = computeICtxi_SVM(tempR, trialorder, ...
             svmdesc, 'spkcnt', preproc, whichSVMkernel, cvtrials);
+
+        % optimizeSVM: 0 no optimization, 1 optimize hyperparameters, 2 onevsone, 3 onevsall
+        switch SVMout.optimizeSVM
+            case 0
+                optoptim = '_nooptim';
+            case 1
+                optoptim = '_alloptim';
+            case 2
+                optoptim = '';
+            case 3
+                optoptim = '_onevsall';
+            otherwise
+                error('optimizeSVM option %d not recognized', SVMout.optimizeSVM)
+        end
+
         if islope>0 %&& excludeneuvar0>0
             SVMtrainICRC.valneu = valneu;
         end
@@ -774,14 +790,14 @@ for ises = 1:numel(nwbsessions)
         if islope==0
             switch excludeneuvar0
                 case 0
-                    svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
-                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+                    svmfn = strcat(pathpp, 'SVM_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
                 case 1
-                    svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
-                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+                    svmfn = strcat(pathpp, 'SVM_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
                 case 2
-                    svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
-                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+                    svmfn = strcat(pathpp, 'SVM_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '.mat');
                 otherwise
                     error('excludeneuvar0 option not recognized')
             end
@@ -801,14 +817,14 @@ for ises = 1:numel(nwbsessions)
     if islope==numel(disperses)
         switch excludeneuvar0
             case 0
-                svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
-                svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+                svmfn = strcat(pathpp, 'SVM_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
             case 1
-                svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
-                svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+                svmfn = strcat(pathpp, 'SVM_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
             case 2
-                svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-                svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+                svmfn = strcat(pathpp, 'SVM_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
             otherwise
                 error('excludeneuvar0 option not recognized')
         end
@@ -976,8 +992,9 @@ for ises = 1:numel(nwbsessions)
             testtrialinds(:,isplit) = reshape( trials2analind(idxTest) ,[],1);
         end
 
-        % 
+        % optimizeSVM: 0 no optimization, 1 optimize hyperparameters, 2 onevsone, 3 onevsall
         cvtrials = struct();
+        cvtrials.optimizeSVM = 0;
         cvtrials.loadcvpartition = true;
         cvtrials.traintrialinds = testtrialinds; % NOTE THE SWITCH!
         cvtrials.testtrialinds = traintrialinds; % NOTE THE SWITCH!
@@ -985,6 +1002,21 @@ for ises = 1:numel(nwbsessions)
         % SVMtrainICRC_models is 14 MB
         [SVMtrainICRC, SVMtrainICRC_models] = computeICtxi_SVM(tempR, trialorder, ...
             svmdesc, 'spkcnt', preproc, whichSVMkernel, cvtrials);
+
+        % optimizeSVM: 0 no optimization, 1 optimize hyperparameters, 2 onevsone, 3 onevsall
+        switch SVMtrainICRC.optimizeSVM
+            case 0
+                optoptim = '_nooptim';
+            case 1
+                optoptim = '_alloptim';
+            case 2
+                optoptim = '';
+            case 3
+                optoptim = '_onevsall';
+            otherwise
+                error('optimizeSVM option %d not recognized', SVMtrainICRC.optimizeSVM)
+        end
+
         if islope>0 %&& excludeneuvar0>0
             SVMtrainICRC.valneu = valneu;
         end
@@ -1038,14 +1070,14 @@ for ises = 1:numel(nwbsessions)
         if islope==0
             switch excludeneuvar0
                 case 0
-                    svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
-                    svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+                    svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
                 case 1
-                    svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
-                    svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+                    svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
                 case 2
-                    svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
-                    svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+                    svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+                    svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '.mat');
                 otherwise
                     error('excludeneuvar0 option not recognized')
             end
@@ -1065,14 +1097,14 @@ for ises = 1:numel(nwbsessions)
     if islope==numel(disperses)
         switch excludeneuvar0
             case 0
-                svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
-                svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+                svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
             case 1
-                svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
-                svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+                svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
             case 2
-                svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-                svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+                svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+                svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
             otherwise
                 error('excludeneuvar0 option not recognized')
         end
@@ -1083,4 +1115,5 @@ for ises = 1:numel(nwbsessions)
     toc(sesclk)
 end
 
+optimizeSVM = cvtrials.optimizeSVM;
 analyzeICtxi_SVM_invcv_trainICRC_lmlv

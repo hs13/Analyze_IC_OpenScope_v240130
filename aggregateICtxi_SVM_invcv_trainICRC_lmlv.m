@@ -18,34 +18,91 @@ fprintf('neuron exclusion criterion %d\n', excludeneuvar0)
 
 silrandagg = struct();
 similagg = struct();
+cnt =0;
+warning('off')
 for ises = 1:numel(nwbsessions)
     mousedate = nwbsessions{ises};
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
 
     pltses = false;
+    % optimizeSVM: 0 no optimization, 1 optimize hyperparameters, 2 onevsone, 3 onevsall
+    optimizeSVM = 0;
+    switch optimizeSVM
+        case 0
+            optoptim = '_nooptim';
+        case 1
+            optoptim = '_alloptim';
+        case 2
+            optoptim = '';
+        case 3
+            optoptim = '_onevsall';
+        otherwise
+            error('optimizeSVM option %d not recognized', optimizeSVM)
+    end
     switch excludeneuvar0
         case 0
-            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC_lmlvslopes_incl.mat');
-            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICRC_lmlvslopes_incl.mat');
+            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
+            svmlmlvfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
+            perffn = strcat(pathpp, 'perf_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_incl.mat');
+            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_incl.mat');
+            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_incl.mat');
         case 1
-            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC_lmlvslopes.mat_excltt');
-            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICRC_lmlvslopes.mat_excltt');
+            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
+            svmlmlvfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
+            perffn = strcat(pathpp, 'perf_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_excltt.mat');
+            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC', optoptim, '_lmlvslopes.mat_excltt');
+            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICRC', optoptim, '_lmlvslopes.mat_excltt');
         case 2
-            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC_lmlvslopes_excl.mat');
-            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICRC_lmlvslopes_excl.mat');
+            svmfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+            svmmdlfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '.mat');
+            svmlmlvfn = strcat(pathpp, 'SVM_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
+            perffn = strcat(pathpp, 'perf_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_excl.mat');
+            silrandfn = strcat(pathpp, 'randomsilencing_SVM_invcv_trainICRC', optoptim, '_lmlvslopes_excl.mat');
+            similfn = strcat(pathpp, 'scoresimilarity_SVM_invcv_trainICR', optoptim, 'C_lmlvslopes_excl.mat');
         otherwise
             error('excludeneuvar0 option not recognized')
     end
+
     silrand = load(silrandfn);
-    % simil = load(similfn);
+    simil = load(similfn);
     if isempty(fieldnames(silrandagg))
         silrandagg = silrand;
-        % similagg = simil;
+        similagg = simil;
     else
         silrandagg(ises) = silrand;
-        % similagg(ises) = simil;
+        similagg(ises) = simil;
     end
+
+    load(svmmdllmlvfn)
+    Nsplits = numel(SVMtrainICRC_models_lmlvs(1).spkcnt);
+    if cnt==0
+        boxconstraintsagg = NaN(numel(disperses), numel(nwbsessions), Nsplits);
+        kernelscaleagg = NaN(numel(disperses), numel(nwbsessions), Nsplits);
+    else
+        if size(boxconstraintsagg,3)~=Nsplits
+            error('inconsistent Nplits')
+        end
+    end
+    for islope = 1:numel(disperses)
+        for isplit = 1:Nsplits
+            bl = SVMtrainICRC_models_lmlvs(islope).spkcnt{isplit}.ModelParameters.BinaryLearners  ;
+            sbl = struct(bl);
+            if ~isempty(sbl.ModelParams.BoxConstraint)
+                boxconstraintsagg(islope,ises,isplit) = sbl.ModelParams.BoxConstraint;
+            end
+            if ~isempty(sbl.ModelParams.KernelScale)
+                kernelscaleagg(islope,ises,isplit) = sbl.ModelParams.KernelScale;
+            end
+        end
+    end
+    cnt = cnt+1;
 end
+warning('off')
 
 %% SVM test and inference performance across LMLV slopes
 disperses = silrand.disperses;
@@ -130,7 +187,7 @@ end
 errorbar( 100*(1-propneusilvec), mean(tempagg,1), std(tempagg,0,1)/sqrt(Nsessions), ...
     'Color', 'k', 'LineWidth', 2)
 lmlvlegs{end} = 'as-is';
-legend(lmlvlegs)
+    legend(lmlvlegs, 'location', 'northwest')
 xlabel('%Neurons')
 ylabel('test accuracy')
 title('inverted cross-validation')
@@ -158,7 +215,7 @@ end
 errorbar( 100*(1-propneusilvec), mean(tempagg,1), std(tempagg,0,1)/sqrt(Nsessions), ...
     'Color', 'k', 'LineWidth', 2)
 lmlvlegs{end} = 'as-is';
-legend(lmlvlegs)
+    legend(lmlvlegs, 'location', 'northwest')
 xlabel('%Neurons')
 ylabel('inference performance')
 title('inverted cross-validation')
@@ -202,13 +259,15 @@ for isp = 1:4
     errorbar( 100*(1-propneusilvec), mean(tempagg,1), std(tempagg,0,1)/sqrt(Nsessions), ...
         'Color', 'k', 'LineWidth', 2)
     lmlvlegs{end} = 'as-is';
-    legend(lmlvlegs)
+    if isp==1
+    legend(lmlvlegs, 'location', 'northwest')
+    end
     xlabel('%Neurons')
     ylabel(ylab)
 title('inverted cross-validation')
 end
 
-%% SVM score Spearman correlation (rank similarity) across cross-validation folds
+%% SVM score Spearman correlation (rank similarity) between each trial and mean score of that trial type
 hireptt = [0, 101, 105, 106, 107, 109, 110, 111, 1105, 1109, 1201, 1299];
 testt = [106,107,110,111];
 inferencett = [1105 1109];
@@ -218,7 +277,7 @@ disperses = simil.disperses;
 propneusilvec = simil.propneusilvec;
 ttoind = find(~ismember(hireptt, testt));
 
-whichstat = 'avg';
+whichstat = 'prct';
 
 meanvecscorerholmlvsagg = cat(1, similagg.meanvecscorerholmlvs);
 meanvecscorerholmlvsaggses = squeeze( mean(cat(3,meanvecscorerholmlvsagg.(whichstat)),1) )';
@@ -240,14 +299,16 @@ rhoscoreasissimilagg = cat(1, rhoscoreasisagg.simil);
 rhoscoreasissimilaggstat = cat(5, rhoscoreasissimilagg.(whichstat));
 rhoscoreasissimilaggses = squeeze(rhoscoreasissimilaggstat(1,propneusilvec==0,:,:,:));
 
+fs=14;
 figure
-annotation('textbox', [0.1 0.9 0.8 0.1], 'String', 'inverted cross-validation', 'EdgeColor', 'none')
+annotation('textbox', [0.1 0.9 0.8 0.1], 'String', 'inverted cross-validation: rank similarity between each trial and mean score of that trial type', 'EdgeColor', 'none', 'FontSize', fs)
 subplot(3,4,1)
 hold all
 pl = plot(disperses,  meanvecscorerholmlvsaggses);
 errorbar(disperses, mean(meanvecscorerholmlvsaggses,1), std(meanvecscorerholmlvsaggses,0,1)/sqrt(Nsessions), 'ko-', 'LineWidth', 2)
 xl = [disperses(1) disperses(end)];
 plot(xl, mean(meanvecscorerhoasisaggses)*[1 1], 'c-', 'LineWidth', 1)
+set(gca, 'FontSize', fs)
 xlabel('LMLV slopes')
 ylabel('% rho(SVM score)==1')
 title('trial mean vector score consistency')
@@ -258,6 +319,7 @@ pl = plot(disperses,  rhoscorelmlvstestaggses);
 errorbar(disperses, mean(rhoscorelmlvstestaggses,1), std(rhoscorelmlvstestaggses,0,1)/sqrt(Nsessions), 'ko-', 'LineWidth', 2)
 xl = [disperses(1) disperses(end)];
 plot(xl, mean(rhoscoreasistestaggses)*[1 1], 'c-', 'LineWidth', 1)
+set(gca, 'FontSize', fs)
 xlabel('LMLV slopes')
 ylabel('% rho(SVM score)==1')
 title('test trials vs trial mean')
@@ -271,13 +333,24 @@ pl = plot(disperses,  rhoscorelmlvsttaggses);
 errorbar(disperses, mean(rhoscorelmlvsttaggses,1), std(rhoscorelmlvsttaggses,0,1)/sqrt(Nsessions), 'ko-', 'LineWidth', 2)
 xl = [disperses(1) disperses(end)];
 plot(xl, mean(rhoscoreasisttaggses)*[1 1], 'c-', 'LineWidth', 1)
+set(gca, 'FontSize', fs)
 xlabel('LMLV slopes')
 ylabel('% rho(SVM score)==1')
 title(sprintf('Trial%d vs trial mean', hireptt(ttoind(ii))))
 end
 
-%%
-whichstat = 'avg';
+%% SVM score Spearman correlation (rank similarity) between cross-validation folds
+whichstat = 'prct';
+switch whichstat
+    case 'avg'
+        ylab = 'avg rho(SVM score)';
+    case 'medianpool'
+        ylab = 'median rho(SVM score)';
+    case 'prct'
+        ylab = '% rho(SVM score)==1';
+    otherwise
+        error([whicstat ' not recognized'])
+end
 
 meanvecscorerholmlvsagg = cat(1, similagg.meanvecscorerholmlvs);
 meanvecscorerholmlvsaggses = squeeze( mean(cat(3,meanvecscorerholmlvsagg.(whichstat)),1) )';
@@ -299,16 +372,18 @@ rhoscoreasissimilagg = cat(1, rhoscoreasisagg.similpair);
 rhoscoreasissimilaggstat = cat(5, rhoscoreasissimilagg.(whichstat));
 rhoscoreasissimilaggses = squeeze(rhoscoreasissimilaggstat(1,propneusilvec==0,:,:,:));
 
+fs = 14;
 figure
-annotation('textbox', [0.1 0.9 0.8 0.1], 'String', 'inverted cross-validation', 'EdgeColor', 'none')
+annotation('textbox', [0.1 0.9 0.8 0.1], 'String', 'inverted cross-validation: rank similarity between cross-validation folds', 'EdgeColor', 'none', 'FontSize', fs)
 subplot(3,4,1)
 hold all
 pl = plot(disperses,  meanvecscorerholmlvsaggses);
 errorbar(disperses, mean(meanvecscorerholmlvsaggses,1), std(meanvecscorerholmlvsaggses,0,1)/sqrt(Nsessions), 'ko-', 'LineWidth', 2)
 xl = [disperses(1) disperses(end)];
 plot(xl, mean(meanvecscorerhoasisaggses)*[1 1], 'c-', 'LineWidth', 1)
+set(gca, 'FontSize', fs)
 xlabel('LMLV slopes')
-ylabel('% rho(SVM score)==1')
+ylabel(ylab)
 title('trial mean vector score consistency')
 
 subplot(3,4,2)
@@ -317,8 +392,9 @@ pl = plot(disperses,  rhoscorelmlvstestaggses);
 errorbar(disperses, mean(rhoscorelmlvstestaggses,1), std(rhoscorelmlvstestaggses,0,1)/sqrt(Nsessions), 'ko-', 'LineWidth', 2)
 xl = [disperses(1) disperses(end)];
 plot(xl, mean(rhoscoreasistestaggses)*[1 1], 'c-', 'LineWidth', 1)
+set(gca, 'FontSize', fs)
 xlabel('LMLV slopes')
-ylabel('% rho(SVM score)==1')
+ylabel(ylab)
 title('test trial pairs')
 
 for ii = 1:numel(ttoind)
@@ -330,8 +406,56 @@ pl = plot(disperses,  rhoscorelmlvsttaggses);
 errorbar(disperses, mean(rhoscorelmlvsttaggses,1), std(rhoscorelmlvsttaggses,0,1)/sqrt(Nsessions), 'ko-', 'LineWidth', 2)
 xl = [disperses(1) disperses(end)];
 plot(xl, mean(rhoscoreasisttaggses)*[1 1], 'c-', 'LineWidth', 1)
+set(gca, 'FontSize', fs)
 xlabel('LMLV slopes')
-ylabel('% rho(SVM score)==1')
+ylabel(ylab)
 title(sprintf('Trial%d pairs', hireptt(ttoind(ii))))
 end
 
+%% test whether hyperparamter optimization played a role in the slope effects
+%{
+BoxConstraint
+Definition: The BoxConstraint parameter specifies the regularization strength for the binary SVMs. 
+It controls the trade-off between achieving a low training error and a large margin for the decision boundary.
+Role:
+Larger BoxConstraint values focus on minimizing misclassification errors, which might lead to overfitting.
+Smaller BoxConstraint values result in a wider margin, potentially underfitting the data but improving generalization.
+Range: Positive scalar.
+
+KernelScale
+Definition: The KernelScale parameter defines the scaling factor for the kernel function (e.g., Gaussian or RBF kernels). 
+It influences how the distance between data points is measured in the transformed feature space.
+Role:
+Smaller values result in a narrower kernel function, focusing on smaller regions of the data space.
+Larger values result in a wider kernel, capturing broader patterns in the data.
+%}
+
+% if box constraint was the major determinant for inference, box constraint
+% should inversely correlate with inference scores (e.g., P(IC1|TRE1) )
+
+% boxconstraint does not have a trend across slopes, but kernelscale does
+% -- it increases with increasing slope
+
+
+[p,tbl,stats]=friedman(reshape(boxconstraintsagg, size(boxconstraintsagg,1),[])');
+disp(p)
+figure; multcompare(stats)
+
+figure; 
+subplot(1,2,1)
+plot(disperses, reshape(boxconstraintsagg, size(boxconstraintsagg,1),[]) )
+subplot(1,2,2); hold all
+plot(disperses, squeeze(mean(boxconstraintsagg,3)) )
+plot(disperses, squeeze(mean(boxconstraintsagg,[2 3])), 'k-', 'LineWidth', 2 )
+
+
+[p,tbl,stats]=friedman(reshape(kernelscaleagg, size(kernelscaleagg,1),[])');
+disp(p)
+figure; multcompare(stats)
+
+figure; 
+subplot(1,2,1)
+plot(disperses, reshape(kernelscaleagg, size(kernelscaleagg,1),[]) )
+subplot(1,2,2); hold all
+plot(disperses, squeeze(mean(kernelscaleagg,3)) )
+plot(disperses, squeeze(mean(kernelscaleagg,[2 3])), 'k-', 'LineWidth', 2 )

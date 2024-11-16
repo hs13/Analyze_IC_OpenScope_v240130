@@ -1,7 +1,7 @@
 function [SVMout, SVM_models] = computeICtxi_SVM(tempR, trialorder, svmdesc, whichR, preproc, whichSVMkernel, cvtrials)
 sesclk = tic;
 
-optimizeSVM = 2; % 0 no optimization, 1 optimize hyperparameters, 2 onevsone, 3 onevsall
+optimizeSVM = cvtrials.optimizeSVM; % 0 no optimization, 1 optimize hyperparameters, 2 onevsone, 3 onevsall
 if cvtrials.loadcvpartition
     Nsplits = size(cvtrials.testtrialinds,2);
 else
@@ -223,11 +223,11 @@ for isplit = 1:Nsplits
     % mean centering didn't actually work
     switch whichSVMkernel
         case 'RBF'
-            t = templateSVM('KernelFunction', 'rbf'); % 'Standardize' is false by default
+            t = templateSVM('Standardize', false, 'KernelFunction', 'rbf'); % 'Standardize' is false by default
         case 'Linear'
-            t = templateSVM('KernelFunction', 'linear');
+            t = templateSVM('Standardize', false, 'KernelFunction', 'linear');
         case 'Poly2'
-            t = templateSVM('KernelFunction', 'polynomial' , 'PolynomialOrder', 2);
+            t = templateSVM('Standardize', false, 'KernelFunction', 'polynomial' , 'PolynomialOrder', 2);
     end
     switch optimizeSVM
         case 0
