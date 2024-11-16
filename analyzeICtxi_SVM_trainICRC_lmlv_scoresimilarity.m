@@ -20,7 +20,7 @@ for ises = 1:numel(nwbsessions)
     mousedate = nwbsessions{ises};
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
     fprintf('%s %d\n', mousedate, ises)
-
+    
     pltses = true;
     preproc = 'meancenter';
     whichSVMkernel = 'Linear';
@@ -47,12 +47,12 @@ for ises = 1:numel(nwbsessions)
         otherwise
             error('excludeneuvar0 option not recognized')
     end
-
+    
     load(svmfn)
     load(svmmdlfn)
     load(svmlmlvfn)
     load(svmmdllmlvfn)
-
+    
     % parametrically change proportion silenced
     propneusilvec = 0:0.1:1;
     % randomly select neurons to silence: sample 100X
@@ -61,14 +61,14 @@ for ises = 1:numel(nwbsessions)
     % Nsamples = 1;
     Nneurons = SVMtrainICRC.Nneurons;
     Nsplits = size(SVMtrainICRC.spkcnt.testtrialinds,2);
-
+    
     testt = [106,107,110,111];
     inferencett = [1105 1109];
     Nhireptt = numel(hireptt);
     Ntt = numel(testt);
     Nttrain = size(SVMtrainICRC.spkcnt.traintrialinds,1)/Ntt;
     Nttest = size(SVMtrainICRC.spkcnt.testtrialinds,1)/Ntt;
-
+    
     try
         tempspkcnt = cat(3,spkcntIChiV1agg{ises}{:});
         Nrep = size(tempspkcnt,1);
@@ -89,7 +89,7 @@ for ises = 1:numel(nwbsessions)
         end
     end
     spkcntICtt = permute(tempspkcnt, [1 3 2]); % Nrep * Nnstt * Nneu
-
+    
     % initialize
     rhoscorefields = {'train', 'test', 'simil', 'trainpair', 'testpair', 'similpair'};
     % rhoscorestats = {'avg', 'stdpool', 'semmean', 'medianpool', 'q1pool', 'q3pool'};
@@ -105,22 +105,30 @@ for ises = 1:numel(nwbsessions)
     meanvecrankpointlmlvs = zeros(Nhireptt,Ntt,numel(disperses));
     rhoscoreasis = struct();
     rhoscorelmlvs = struct();
+    rhoxneusubasis = struct();
+    rhoxneusublmlvs = struct();
     for f = 1:numel(rhoscorefields)
         if contains(rhoscorefields{f}, 'train')
             tempNt = Ntt;
+            tempNtrials = Nttrain;
         elseif contains(rhoscorefields{f}, 'test')
             tempNt = Ntt;
+            tempNtrials = Nttest;
         elseif contains(rhoscorefields{f}, 'simil')
             tempNt = Nhireptt;
+            tempNtrials = Nrep;
         else
             error([rhoscorefields{f} ' not recognized'])
         end
         for r = 1:numel(rhoscorestats)
             rhoscoreasis.(rhoscorefields{f}).(rhoscorestats{r}) = zeros(Nsamples, numel(propneusilvec), tempNt);
             rhoscorelmlvs.(rhoscorefields{f}).(rhoscorestats{r}) = zeros(Nsamples, numel(propneusilvec), tempNt, numel(disperses));
+            
+            rhoxneusubasis.(rhoscorefields{f}).(rhoscorestats{r}) = zeros(tempNtrials, numel(propneusilvec), tempNt);
+            rhoxneusublmlvs.(rhoscorefields{f}).(rhoscorestats{r}) = zeros(tempNtrials, numel(propneusilvec), tempNt, numel(disperses));
         end
     end
-
+    
     similclk = tic;
     for islope = 0:numel(disperses)
         tic
@@ -134,11 +142,11 @@ for ises = 1:numel(nwbsessions)
             spkcntvar = var(spkcntICtt,0,1); % 1XNimg X Nneurons
             temp = spkcntvar; temp(spkcntvar==0)=NaN;
             totvar = nanmean(temp,2);
-
+            
             tempx = log10(spkcntmu);
             tempx(spkcntmu==0) = NaN;
             meanx = squeeze(nanmean(tempx,3)); % average across neurons: 1XNimg
-
+            
             Avec = lmlvslope(ises,:);
             Bvec = lmlvyintercept(ises,:);
             Cvec = disperses(islope)*ones(1,Nhireptt);
@@ -146,7 +154,7 @@ for ises = 1:numel(nwbsessions)
             newspkcntvar = 10.^( (Cvec./Avec).*(log10(spkcntvar)-Bvec) + Dvec);
             newspkcntres = spkcntres .* sqrt(newspkcntvar./spkcntvar);
             newspkcntICtt = mean(spkcntICtt,1)+newspkcntres;
-
+            
             switch excludeneuvar0
                 case 0
                     valneu = true(Nneu,1);
@@ -157,11 +165,11 @@ for ises = 1:numel(nwbsessions)
                 otherwise
                     error('excludeneuvar0 option not recognized')
             end
-
+            
             tempR = reshape(newspkcntICtt(:,:,valneu), Nrep*Nhireptt, nnz(valneu))';
             trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
         end
-
+        
         if islope==0
             SVMout = SVMtrainICRC;
             SVM_models = SVMtrainICRC_models.spkcnt;
@@ -171,7 +179,7 @@ for ises = 1:numel(nwbsessions)
             SVM_models = SVMtrainICRC_models_lmlvs(islope).spkcnt;
             valneu = SVMout.valneu;
         end
-
+        
         meanveclabelcv = NaN(Nhireptt, Nsplits);
         meanvecscorecv = NaN(Nhireptt, Nsplits, Ntt);
         meanvecrankptcv = zeros(Nhireptt, Nsplits, Ntt);% higher scores have higher value
@@ -185,19 +193,19 @@ for ises = 1:numel(nwbsessions)
                     % Z-score
                     trainRmean = mean(tempR(:,traintrialinds),2);
                     trainRstd = std(tempR(:,traintrialinds),0,2);
-
+                    
                     Tp = ( (tempR-trainRmean)./trainRstd )';
                 case 'minmax'
                     trainRmin = min(tempR(:,traintrialinds),[],2);
                     trainRrange = range(tempR(:,traintrialinds),2);
-
+                    
                     Tp = ( (tempR-trainRmin)./trainRrange )';
                 case 'meancenter'
                     trainRmean = mean(tempR(:,traintrialinds),2);
                     Tp = (tempR-trainRmean)';
             end
             Tp(isnan(Tp))=0; % Ntrials * Nneurons
-
+            
             for itt = 1:Nhireptt
                 meanvec = mean(Tp(trialorder==hireptt(itt),:),1);
                 [meanveclabel,meanvecscore] = predict(SVM_models{isplit}, meanvec);
@@ -213,7 +221,7 @@ for ises = 1:numel(nwbsessions)
         % [c,m,h] = multcompare(stats);
         % m is the same as squeeze(mean(meanvecrankcv,2))
         meanvecrankpointcv = squeeze(mean(meanvecrankptcv,2)); % higher scores have higher value
-
+        
         meanvecrho = zeros(Nhireptt, nchoosek(Nsplits,2));
         for itt = 1:Nhireptt
             rho =  corr(squeeze(meanvecscorecv(itt,:,:))', 'type', 'spearman');
@@ -223,8 +231,8 @@ for ises = 1:numel(nwbsessions)
             end
             meanvecrho(itt,:) = rho(triu(true(Nsplits),1));
         end
-
-        if islope==0    
+        
+        if islope==0
             meanvecrankpointasis = meanvecrankpointcv;
             meanvecscorerhoasis.avg = mean(meanvecrho,2);
             meanvecscorerhoasis.medianpool = median(meanvecrho,2);
@@ -235,7 +243,7 @@ for ises = 1:numel(nwbsessions)
             meanvecscorerholmlvs.medianpool(:,islope) = median(meanvecrho,2);
             meanvecscorerholmlvs.prct(:,islope) = mean(meanvecrho==1,2);
         end
-
+        
         for n = 1:length(propneusilvec)
             propneu2sil = propneusilvec(n);
             if propneu2sil==0
@@ -249,7 +257,12 @@ for ises = 1:numel(nwbsessions)
                     neu2silmat(neurand,s) = true;
                 end
             end
-
+            
+            
+            trainscorepd = zeros(Nsamples, Nttrain, Ntt, Nsplits, Ntt);
+            testscorepd = zeros(Nsamples, Nttest, Ntt, Nsplits, Ntt);
+            similscorepd = zeros(Nsamples, Nrep, Ntt, Nsplits, Nhireptt);
+            
             for s = 1:size(neu2silmat,2) % Nsamples if 0<propneu2sil<1
                 trainscore = zeros(Nttrain, Ntt, Nsplits, Ntt);
                 testscore = zeros(Nttest, Ntt, Nsplits, Ntt);
@@ -264,55 +277,55 @@ for ises = 1:numel(nwbsessions)
                             % Z-score
                             trainRmean = mean(tempR(:,traintrialinds),2);
                             trainRstd = std(tempR(:,traintrialinds),0,2);
-
+                            
                             Tp = ( (tempR-trainRmean)./trainRstd )';
                         case 'minmax'
                             trainRmin = min(tempR(:,traintrialinds),[],2);
                             trainRrange = range(tempR(:,traintrialinds),2);
-
+                            
                             Tp = ( (tempR-trainRmin)./trainRrange )';
                         case 'meancenter'
                             trainRmean = mean(tempR(:,traintrialinds),2);
                             Tp = (tempR-trainRmean)';
                     end
                     Tp(isnan(Tp))=0; % Ntrials * Nneurons
-
+                    
                     trainlabs = SVMout.trialorder(traintrialinds);
                     testlabs = SVMout.trialorder(testtrialinds);
                     inftrials = ismember(SVMout.trialorder, inferencett);
-
+                    
                     Xsilrand = Tp;
                     Xsilrand(:,neu2silmat(valneu,s)) = 0;
                     [templabel,tempscore] = predict(SVM_models{isplit}, Xsilrand);
-
+                    
                     % sanity check
                     if propneu2sil==0
                         if ~isequaln(templabel, SVMout.spkcnt.all.label(:,isplit))
                             error('check that Tp was calculated correctly')
                         end
                     end
-
+                    
                     %                 if numel(unique(templabel))<Ntt
                     %                     warning('only %d/%d trial types returned by SVM, skipping...', numel(unique(templabel)), Ntt)
                     %                     continue
                     %                 end
-
+                    
                     % train & test
                     for itt = 1:Ntt
                         trainttscore = tempscore(traintrialinds(trainlabs==testt(itt)),:);
                         trainscore(:,:,isplit,itt) = trainttscore;
-
+                        
                         testttscore = tempscore(testtrialinds(testlabs==testt(itt)),:);
                         testscore(:,:,isplit,itt) = testttscore;
                     end
-
+                    
                     % similarity inference
                     for itt = 1:Nhireptt
                         similttscore = tempscore(trialorder==hireptt(itt),:);
                         similscore(:,:,isplit,itt) = similttscore;
                     end
                 end
-
+                
                 trainrhoscore = zeros(Nttrain, Nsplits, Ntt);
                 testrhoscore = zeros(Nttest, Nsplits, Ntt);
                 similrhoscore = zeros(Nrep, Nsplits, Nhireptt);
@@ -338,7 +351,7 @@ for ises = 1:numel(nwbsessions)
                         similrhoscorepair(itrial,:,itt) = rhomat(triu(true(size(rhomat)),1));
                     end
                 end
-
+                
                 % rhoscorefields = {'train', 'test', 'simil', 'tranpair', 'testpair', 'similpair'};
                 % rhoscorestats = {'avg', 'stdpool', 'semmean', 'medianpool', 'q1pool', 'q3pool'};
                 for f = 1:numel(rhoscorefields)
@@ -384,9 +397,92 @@ for ises = 1:numel(nwbsessions)
                         end
                     end
                 end
-
+                
+                trainscorepd(s,:,:,:,:) = trainscore;
+                testscorepd(s,:,:,:,:) = testscore;
+                similscorepd(s,:,:,:,:) = similscore;
             end
-
+            trainrhoxneusub = zeros(Nsamples, Nttrain, Nsplits, Ntt);
+            testrhoxneusub = zeros(Nsamples, Nttest, Nsplits, Ntt);
+            similrhoxneusub = zeros(Nsamples, Nrep, Nsplits, Nhireptt);
+            trainrhoxneusubpair = zeros(nchoosek(Nsamples,2), Nttrain, Nsplits, Ntt);
+            testrhoxneusubpair = zeros(nchoosek(Nsamples,2), Nttest, Nsplits, Ntt);
+            similrhoxneusubpair = zeros(nchoosek(Nsamples,2), Nrep, Nsplits, Nhireptt);
+            for itt = 1:Ntt
+                for isplit = 1:Nsplits
+                    for itrial = 1:Nttrain
+                        trainrhoxneusub(:,itrial,isplit,itt) = corr(squeeze(trainscorepd(:,itrial,:,isplit,itt))', ...
+                            meanvecrankpointcv(hireptt==testt(itt),:)', 'type', 'spearman');
+                        rhomat = corr(squeeze(trainscorepd(:,itrial,:,isplit,itt))', 'type', 'spearman');
+                        trainrhoxneusubpair(:,itrial,isplit,itt) = rhomat(triu(true(size(rhomat)),1));
+                    end
+                    
+                    for itrial = 1:Nttest
+                        testrhoxneusub(:,itrial,isplit,itt) = corr(squeeze(testscorepd(:,itrial,:,isplit,itt))', ...
+                            meanvecrankpointcv(hireptt==testt(itt),:)', 'type', 'spearman');
+                        rhomat = corr(squeeze(testscorepd(:,itrial,:,isplit,itt))', 'type', 'spearman');
+                        testrhoxneusubpair(:,itrial,isplit,itt) = rhomat(triu(true(size(rhomat)),1));
+                    end
+                end
+            end
+            for itt = 1:Nhireptt
+                for isplit = 1:Nsplits
+                    for itrial = 1:Nrep
+                        similrhoxneusub(:,itrial,isplit,itt) = corr(squeeze(similscorepd(:,itrial,:,isplit,itt))', ...
+                            meanvecrankpointcv(itt,:)', 'type', 'spearman');
+                        rhomat = corr(squeeze(similscorepd(:,itrial,:,isplit,itt))', 'type', 'spearman');
+                        similrhoxneusubpair(:,itrial,isplit,itt) = rhomat(triu(true(size(rhomat)),1));
+                    end
+                end
+            end
+            
+            % rhoscorefields = {'train', 'test', 'simil', 'tranpair', 'testpair', 'similpair'};
+            % rhoscorestats = {'avg', 'stdpool', 'semmean', 'medianpool', 'q1pool', 'q3pool'};
+            for f = 1:numel(rhoscorefields)
+                switch rhoscorefields{f}
+                    case 'train'
+                        temprhoscore = trainrhoxneusub; % Nsamples*Nttrain*Nsplits*Ntt
+                    case 'test'
+                        temprhoscore = testrhoxneusub;
+                    case 'simil'
+                        temprhoscore = similrhoxneusub;
+                    case 'trainpair'
+                        temprhoscore = trainrhoxneusubpair;
+                    case 'testpair'
+                        temprhoscore = testrhoxneusubpair;
+                    case 'similpair'
+                        temprhoscore = similrhoxneusubpair;
+                    otherwise
+                        error([rhoscorefields{f} ' not recognized'])
+                end
+                temprhoscore = permute(temprhoscore,[1,3,2,4]);  % Nsamples*Nsplits*Nttrain*Ntt
+                for r = 1:numel(rhoscorestats)
+                    switch rhoscorestats{r}
+                        case 'avg'
+                            temprhoscorestat = mean(temprhoscore,[1,2]);
+                        case 'stdpool'
+                            temprhoscorestat = std(reshape(temprhoscore,[],size(temprhoscore,3),size(temprhoscore,4)),0,1);
+                        case 'semmean'
+                            temprhoscorestat = mean(std(temprhoscore,0,1)/sqrt(size(temprhoscore,1)), 2);
+                        case 'medianpool'
+                            temprhoscorestat = median(reshape(temprhoscore,[],size(temprhoscore,3),size(temprhoscore,4)),1);
+                        case 'q1pool'
+                            temprhoscorestat = prctile(reshape(temprhoscore,[],size(temprhoscore,3),size(temprhoscore,4)),25,1);
+                        case 'q3pool'
+                            temprhoscorestat = prctile(reshape(temprhoscore,[],size(temprhoscore,3),size(temprhoscore,4)),75,1);
+                        case 'prct'
+                            temprhoscorestat = mean(temprhoscore==1,[1,2]);
+                        otherwise
+                            error([rhoscorestats{r} ' not recognized'])
+                    end
+                    if islope==0
+                        rhoxneusubasis.(rhoscorefields{f}).(rhoscorestats{r})(:,s,:) = squeeze(temprhoscorestat);
+                    else
+                        rhoxneusublmlvs.(rhoscorefields{f}).(rhoscorestats{r})(:,s,:,islope) = squeeze(temprhoscorestat);
+                    end
+                end
+            end
+            
             if islope==0
                 fprintf('silence %.2f, as-is done\n', propneu2sil)
             else
@@ -395,23 +491,23 @@ for ises = 1:numel(nwbsessions)
             toc
         end
     end
-
+    
     save(similfn, 'excludeneuvar0', 'disperses', 'propneusilvec', 'meanvecrankpointasis', 'meanvecrankpointlmlvs', ...
-        'meanvecscorerhoasis', 'meanvecscorerholmlvs', 'rhoscoreasis', 'rhoscorelmlvs')
+        'meanvecscorerhoasis', 'meanvecscorerholmlvs', 'rhoscoreasis', 'rhoscorelmlvs', 'rhoxneusubasis', 'rhoxneusublmlvs')
     toc(similclk)
-
+    
     if pltses
         figure
-            subplot(2,3,1)
-            hold all
-            pl = plot(disperses, squeeze(meanvecscorerholmlvs.prct) );
-            for itt = 1:numel(pl)
-                h = squeeze(meanvecscorerhoasis.prct(itt));
-                plot([disperses(1) disperses(end)], h*[1 1], 'Color', pl(itt).Color)
-            end
-            xlabel('LMLV slopes')
-            ylabel('% rho(SVM score)==1')
-            title('trial mean vector score consistency')
+        subplot(2,3,1)
+        hold all
+        pl = plot(disperses, squeeze(meanvecscorerholmlvs.prct) );
+        for itt = 1:numel(pl)
+            h = squeeze(meanvecscorerhoasis.prct(itt));
+            plot([disperses(1) disperses(end)], h*[1 1], 'Color', pl(itt).Color)
+        end
+        xlabel('LMLV slopes')
+        ylabel('% rho(SVM score)==1')
+        title('trial mean vector score consistency')
         for isp = [2,3,5,6]
             switch isp
                 case 2
@@ -438,7 +534,7 @@ for ises = 1:numel(nwbsessions)
                 else
                     lw = 0.2;
                 end
-                plot(disperses, squeeze(rhoscorelmlvs.(whichrhoscorefield).prct(1,propneusilvec==0,ttoind(ii),:) ), 'Color', pl(ii).Color, 'LineWidth', lw)                
+                plot(disperses, squeeze(rhoscorelmlvs.(whichrhoscorefield).prct(1,propneusilvec==0,ttoind(ii),:) ), 'Color', pl(ii).Color, 'LineWidth', lw)
                 h = squeeze(rhoscoreasis.(whichrhoscorefield).prct(1,propneusilvec==0,ttoind(ii) ));
                 plot([disperses(1) disperses(end)], h*[1 1], 'Color', pl(ii).Color, 'LineWidth', lw)
                 text(disperses(1), yl(1)+(numel(pl)-ii-1)*0.08*range(yl), num2str(hireptt(ttoind(ii))), 'Color', pl(ii).Color, 'FontSize', 10, 'VerticalAlignment', 'bottom')
@@ -449,5 +545,5 @@ for ises = 1:numel(nwbsessions)
             title(whichrhoscorefield)
         end
     end
-
+    
 end
