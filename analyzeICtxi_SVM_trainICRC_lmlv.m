@@ -53,10 +53,10 @@ for ises = 1:numel(nwbsessions)
             error('excludeneuvar0 option not recognized')
     end
 
-    if exist(silrandfn, 'file')
-        fprintf('excludeneuvar0 version %d random silencing SVM already calculated\n', excludeneuvar0)
-        continue
-    end
+    % if exist(silrandfn, 'file')
+    %     fprintf('excludeneuvar0 version %d random silencing SVM already calculated\n', excludeneuvar0)
+    %     continue
+    % end
 
     load(svmfn)
     load(svmmdlfn)
@@ -89,7 +89,7 @@ for ises = 1:numel(nwbsessions)
         end
         for isplit = 1:Nsplits
             if ~isequal(unique(SVMout.spkcnt.all.label(:,isplit)), testt')
-                error('check trained SVM: not all trial types are respresented')
+                warning('check trained SVM: not all trial types are respresented')
             end
         end
 
@@ -164,7 +164,7 @@ for ises = 1:numel(nwbsessions)
     % parametrically change proportion silenced
     propneusilvec = 0:0.1:1;
     % randomly select neurons to silence: sample 100X
-    Nsamples = 100; % estimated ~30min for 100 samples
+    Nsamples = 10; % estimated ~30min for 100 samples
     Nsplits = size(SVMtrainICRC.spkcnt.testtrialinds,2);
 
 try

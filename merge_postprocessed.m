@@ -414,3 +414,127 @@ for ises = 1:Nsessions
     toc
 end
 
+
+%% spontaneous block activity (added 241118)
+clear all
+addpath(genpath('d:\Users\USER\Documents\MATLAB\matnwb'))
+addpath('C:\Users\USER\GitHub\Analyze_IC_OpenScope_v240130')
+addpath(genpath('C:\Users\USER\GitHub\helperfunctions'))
+
+datadir = 'S:\OpenScopeData\00248_v240130\';
+nwbdir = dir(datadir);
+nwbsessions = {nwbdir.name};
+nwbsessions = nwbsessions( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') );
+
+for ises = 1:numel(nwbsessions)
+    clearvars -except ises nwbsessions datadir
+    sesclk = tic;
+
+    nwbfiles = cat(1, dir([datadir nwbsessions{ises} filesep '*.nwb']), dir([datadir nwbsessions{ises} filesep '*' filesep '*.nwb']));
+
+    % take filename  with shortest length or filename that does not contain probe
+    [~, fileind] = min(cellfun(@length, {nwbfiles.name}));
+    nwbspikefile = fullfile([nwbfiles(fileind).folder filesep nwbfiles(fileind).name]);
+    % nwbspikefile = string(nwbspikefile);
+    disp(nwbspikefile)
+    nwb = nwbRead(nwbspikefile); %, 'ignorecache');
+
+    pathpp = [datadir 'postprocessed' filesep nwbsessions{ises} filesep];
+    if ~exist(pathpp, 'dir')
+        mkdir(pathpp)
+    end
+
+    load([pathpp, 'postprocessed.mat'])
+
+    %% where are the units from? probe position and within-probe electrode
+    % position? brain area labels?
+    % There's a 'peak channel' field associated with each unit.
+    % The formula for the id is 1000 *probe_val + the local electrode id.
+    % This should be the same as the ids that are present in the id field of the
+    % electrode section of the NWB (i.e. the 2304th value is 5383 because it is
+    % the 383rd value of the 5th probe.)
+
+    % nwb.general_extracellular_ephys
+    electrode_probeid = nwb.general_extracellular_ephys_electrodes.vectordata.get('probe_id').data.load();
+    electrode_localid = nwb.general_extracellular_ephys_electrodes.vectordata.get('local_index').data.load();
+    electrode_id = 1000*electrode_probeid + electrode_localid;
+    if ~isequal( 1000*electrode_probeid + electrode_localid, ...
+        nwb.general_extracellular_ephys_electrodes.id.data.load()) 
+        error('check how electrode_id is calculated')
+    end
+    electrode_location = nwb.general_extracellular_ephys_electrodes.vectordata.get('location').data.load();
+
+    % disp(unique(electrode_location)')
+    % save([pathpp 'info_electrodes.mat'], 'electrode_probeid', 'electrode_localid', 'electrode_id', 'electrode_location', '-v7.3')
+
+    %% extract spike times
+    unit_ids = nwb.units.id.data.load(); % array of unit ids represented within this session
+    unit_peakch = nwb.units.vectordata.get('peak_channel_id').data.load();
+    unit_times_data = nwb.units.spike_times.data.load();
+    unit_times_idx = nwb.units.spike_times_index.data.load();
+    % unit_waveform = nwb.units.waveform_mean.data.load();
+    unit_wfdur = nwb.units.vectordata.get('waveform_duration').data.load();
+
+    Nneurons = length(unit_ids);
+
+    % all(ismember(unit_peakch, electrode_id))
+
+    spiketimes = cell(Nneurons, 1);
+    last_idx = 0;
+    for ii = 1:Nneurons
+        unit_id = unit_ids(ii);
+
+        %     assert(unit_trials_idx(i) == unit_times_idx(i), 'Expected unit boundaries to match between trials & spike_times jagged arrays')
+        start_idx = last_idx + 1;
+        end_idx = unit_times_idx(ii);
+
+        spiketimes{ii} = unit_times_data(start_idx:end_idx);
+
+        last_idx = end_idx;
+    end
+
+    Tres = 0.001; % 1ms
+    stlen = ceil((max(unit_times_data)+1)/Tres); % add 1s buffer/padding after the last spike timing
+
+    disp([stlen, Nneurons])
+    % save([pathpp 'info_units.mat'], 'unit_ids', 'unit_peakch', 'unit_times_idx', 'unit_wfdur') %'unit_times_data',
+
+    elecid = electrode_id+1;
+    revmapelecid = NaN(max(elecid),1);
+    revmapelecid(elecid) = 1:numel(elecid);
+    neuallloc = electrode_location(revmapelecid(unit_peakch+1));
+
+    % sanity check
+    electrodeid = nwb.general_extracellular_ephys_electrodes.id.data.load();
+    unit_location = cell(Nneurons,1);
+    for ii = 1:Nneurons
+        unit_location(ii) = electrode_location(electrodeid==unit_peakch(ii));
+    end
+    if ~isequal(neuallloc, unit_location)
+        error('check how neuallloc is calculated')
+    end
+    
+    %% spontaneous block
+    % number of spontaneous chunks
+    Nspon = numel(vis.spontaneous_presentations.start_time);
+    spondurs = vis.spontaneous_presentations.stop_time-vis.spontaneous_presentations.start_time;
+    sponstlens = 1+floor(spondurs/Tres);
+    psthspon = cell(Nspon,1);
+    for ispon = 1:Nspon
+
+        sponspiketrain = false(sponstlens(ispon), Nneurons);
+        for ci = 1:Nneurons
+            tempvalspks = spiketimes{ci}>=vis.spontaneous_presentations.start_time(ispon) & ...
+                spiketimes{ci}<vis.spontaneous_presentations.stop_time(ispon);
+            tempst = spiketimes{ci}(tempvalspks) - vis.spontaneous_presentations.start_time(ispon); % spike timing in seconds
+            tempstind = floor(tempst/Tres)+1;
+            sponspiketrain(tempstind, ci) = true;
+        end
+
+        psthspon{ispon} = sponspiketrain;
+    end
+
+
+    save([pathpp, 'psth_spontaneous.mat'], 'neuallloc', 'vis', 'psthspon', '-v7.3')
+    toc(sesclk)
+end

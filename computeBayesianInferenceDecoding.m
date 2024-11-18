@@ -586,7 +586,7 @@ addpath([codepath 'helperfunctions'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScope_spkcnt_ICwcfg1.mat'])
 load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1.mat'])
 
-for excludeneuvar0 = [0 2]
+excludeneuvar0 = 0;
 
 for ises = 1:numel(nwbsessions)
     clearvars -except excludeneuvar0 ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
@@ -839,7 +839,6 @@ end
 analyzeICtxi_SVM_trainICRC_lmlv
 analyzeICtxi_SVM_trainICRC_lmlv_scoresimilarity
 
-end
 
 %% run inverted cross-validation SVM acros LMLV slopes (non-overlapping training data)
 if ismac

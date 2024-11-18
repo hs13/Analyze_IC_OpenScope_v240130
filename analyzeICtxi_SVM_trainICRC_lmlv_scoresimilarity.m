@@ -14,7 +14,7 @@ load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1
 % excludeneuvar0 = 2;
 fprintf('neuron exclusion criterion %d\n', excludeneuvar0)
 
-for ises = 1:numel(nwbsessions)
+for ises = numel(nwbsessions):-1:1
     clearvars -except excludeneuvar0 ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
     sesclk = tic;
     mousedate = nwbsessions{ises};
@@ -121,11 +121,11 @@ for ises = 1:numel(nwbsessions)
             error([rhoscorefields{f} ' not recognized'])
         end
         for r = 1:numel(rhoscorestats)
-            rhoscoreasis.(rhoscorefields{f}).(rhoscorestats{r}) = zeros(Nsamples, numel(propneusilvec), tempNt);
-            rhoscorelmlvs.(rhoscorefields{f}).(rhoscorestats{r}) = zeros(Nsamples, numel(propneusilvec), tempNt, numel(disperses));
+            rhoscoreasis.(rhoscorefields{f}).(rhoscorestats{r}) = NaN(Nsamples, numel(propneusilvec), tempNt);
+            rhoscorelmlvs.(rhoscorefields{f}).(rhoscorestats{r}) = NaN(Nsamples, numel(propneusilvec), tempNt, numel(disperses));
             
-            rhoxneusubasis.(rhoscorefields{f}).(rhoscorestats{r}) = zeros(tempNtrials, numel(propneusilvec), tempNt);
-            rhoxneusublmlvs.(rhoscorefields{f}).(rhoscorestats{r}) = zeros(tempNtrials, numel(propneusilvec), tempNt, numel(disperses));
+            rhoxneusubasis.(rhoscorefields{f}).(rhoscorestats{r}) = NaN(tempNtrials, numel(propneusilvec), tempNt);
+            rhoxneusublmlvs.(rhoscorefields{f}).(rhoscorestats{r}) = NaN(tempNtrials, numel(propneusilvec), tempNt, numel(disperses));
         end
     end
     
@@ -402,6 +402,7 @@ for ises = 1:numel(nwbsessions)
                 testscorepd(s,:,:,:,:) = testscore;
                 similscorepd(s,:,:,:,:) = similscore;
             end
+
             trainrhoxneusub = zeros(Nsamples, Nttrain, Nsplits, Ntt);
             testrhoxneusub = zeros(Nsamples, Nttest, Nsplits, Ntt);
             similrhoxneusub = zeros(Nsamples, Nrep, Nsplits, Nhireptt);
@@ -476,9 +477,9 @@ for ises = 1:numel(nwbsessions)
                             error([rhoscorestats{r} ' not recognized'])
                     end
                     if islope==0
-                        rhoxneusubasis.(rhoscorefields{f}).(rhoscorestats{r})(:,s,:) = squeeze(temprhoscorestat);
+                        rhoxneusubasis.(rhoscorefields{f}).(rhoscorestats{r})(:,n,:) = squeeze(temprhoscorestat);
                     else
-                        rhoxneusublmlvs.(rhoscorefields{f}).(rhoscorestats{r})(:,s,:,islope) = squeeze(temprhoscorestat);
+                        rhoxneusublmlvs.(rhoscorefields{f}).(rhoscorestats{r})(:,n,:,islope) = squeeze(temprhoscorestat);
                     end
                 end
             end
