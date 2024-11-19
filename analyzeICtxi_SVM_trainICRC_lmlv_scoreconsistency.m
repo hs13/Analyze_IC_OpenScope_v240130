@@ -12,7 +12,7 @@ load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1
 
 % if 0, keep all neurons; if 1, exclude zero variance neurons in train trial
 % types; if 2 exclude zero variance neurons in all trial types
-% excludeneuvar0 = 2;
+excludeneuvar0 = 0;
 fprintf('neuron exclusion criterion %d\n', excludeneuvar0)
 
 for ises = numel(nwbsessions):-1:1
@@ -22,7 +22,7 @@ for ises = numel(nwbsessions):-1:1
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
     fprintf('%s %d\n', mousedate, ises)
     
-    pltses = true;
+    pltses = false;
     preproc = 'meancenter';
     whichSVMkernel = 'Linear';
     svmdesc = 'trainICRC';
@@ -117,9 +117,7 @@ for ises = numel(nwbsessions):-1:1
         end
     end
     
-    consistclk = tic;
     for islope = 0:numel(disperses)
-        tic
         if islope==0
             tempR = reshape(spkcntICtt, Nrep*Nhireptt, Nneu)';
             trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
@@ -243,7 +241,7 @@ for ises = numel(nwbsessions):-1:1
                     similscore(:,:,isplit,itt) = similttscore;
                     
                     similttscorecompl = complscore(trialorder==hireptt(itt),:);
-                    similscore(:,:,isplit,itt) = similttscorecompl;
+                    similscorecompl(:,:,isplit,itt) = similttscorecompl;
                 end
             end
             
@@ -268,7 +266,7 @@ for ises = numel(nwbsessions):-1:1
             for itt = 1:Nhireptt
                 for itrial = 1:Nrep
                     rhomat = corr(squeeze(similscore(itrial,:,:,itt)), squeeze(similscorecompl(itrial,:,:,itt)), 'type', 'spearman');
-                    similconscorediag = diag(rhomat);
+                    similconscorediag(itrial,:,itt) = diag(rhomat);
                     similconscorepair(itrial,:,itt) = rhomat(triu(true(size(rhomat)),1));
                 end
             end
@@ -326,11 +324,52 @@ for ises = numel(nwbsessions):-1:1
         else
             fprintf('silence %.2f, lmlv slope %.2f done\n', propneu2sil, disperses(islope))
         end
-        toc
     end
     
     save(consistfn, 'excludeneuvar0', 'disperses', 'propneu2sil', 'rhoxneudivasis', 'rhoxneudivlmlvs')
-    toc(consistclk)
+    toc(sesclk)
     
+    if pltses
+        testt = [106,107,110,111];
+        hireptt = [0, 101, 105, 106, 107, 109, 110, 111, 1105, 1109, 1201, 1299];
+        figure
+        for isp = 1:4
+            switch isp
+                case 1
+                    whichrhoscorefield = 'test';
+                    ttoind = find(true(size(testt)));
+                case 2
+                    whichrhoscorefield = 'simil';
+                    ttoind = find(~ismember(hireptt,testt));
+                case 3
+                    whichrhoscorefield = 'testpair';
+                    ttoind = find(true(size(testt)));
+                case 4
+                    whichrhoscorefield = 'similpair';
+                    ttoind = find(~ismember(hireptt,testt));
+            end
+            subplot(2,2,isp)
+            hold all
+            pl = plot(disperses, squeeze(mean(rhoxneudivlmlvs.(whichrhoscorefield).avg(:,ttoind,:),1) ) );
+            yl = ylim;
+            for ii = 1:numel(pl)
+                if ismember(hireptt(ttoind(ii)), [1105 1109])
+                    lw = 2;
+                    disp(ii)
+                else
+                    lw = 0.2;
+                end
+                plot(disperses, squeeze(mean(rhoxneudivlmlvs.(whichrhoscorefield).avg(:,ttoind(ii),:),1) ), 'Color', pl(ii).Color, 'LineWidth', lw)
+                h = squeeze(mean(rhoxneudivasis.(whichrhoscorefield).avg(:,ttoind(ii) ),1));
+                plot([disperses(1) disperses(end)], h*[1 1], 'Color', pl(ii).Color, 'LineWidth', lw)
+                text(disperses(1), yl(1)+(numel(pl)-ii-1)*0.08*range(yl), num2str(hireptt(ttoind(ii))), 'Color', pl(ii).Color, 'FontSize', 10, 'VerticalAlignment', 'bottom')
+            end
+            plot(disperses, squeeze(mean(rhoxneudivlmlvs.(whichrhoscorefield).avg(:,ttoind,:),[1,2])), 'k-', 'LineWidth',2 );
+            ylim(yl)
+            xlabel('LMLV slopes')
+            ylabel('% rho(SVM score)==1')
+            title(whichrhoscorefield)
+        end
+    end
     
 end

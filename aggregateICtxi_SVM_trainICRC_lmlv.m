@@ -19,6 +19,7 @@ fprintf('neuron exclusion criterion %d\n', excludeneuvar0)
 
 silrandagg = struct();
 similagg = struct();
+consistagg = struct();
 for ises = 1:numel(nwbsessions)
     mousedate = nwbsessions{ises};
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
@@ -28,25 +29,42 @@ for ises = 1:numel(nwbsessions)
         case 0
             silrandfn = strcat(pathpp, 'randomsilencing_SVM_trainICRC_lmlvslopes_incl.mat');
             similfn = strcat(pathpp, 'scoresimilarity_SVM_trainICRC_lmlvslopes_incl.mat');
+            consistfn = strcat(pathpp, 'scoreconsistency_SVM_', svmdesc, '_lmlvslopes_incl.mat');
         case 1
             silrandfn = strcat(pathpp, 'randomsilencing_SVM_trainICRC_lmlvslopes.mat_excltt');
             similfn = strcat(pathpp, 'scoresimilarity_SVM_trainICRC_lmlvslopes.mat_excltt');
+            consistfn = strcat(pathpp, 'scoreconsistency_SVM_', svmdesc, '_lmlvslopes.mat_excltt');
         case 2
             silrandfn = strcat(pathpp, 'randomsilencing_SVM_trainICRC_lmlvslopes_excl.mat');
             similfn = strcat(pathpp, 'scoresimilarity_SVM_trainICRC_lmlvslopes_excl.mat');
+            consistfn = strcat(pathpp, 'scoreconsistency_SVM_', svmdesc, '_lmlvslopes_excl.mat');
         otherwise
             error('excludeneuvar0 option not recognized')
     end
     silrand = load(silrandfn);
     simil = load(similfn);
+    consist = load(consistfn);
     if isempty(fieldnames(silrandagg))
         silrandagg = silrand;
         similagg = simil;
+        consistagg = consist;
     else
         silrandagg(ises) = silrand;
         similagg(ises) = simil;
+        consistagg(ises) = consist;
     end
 end
+
+hireptt = [0, 101, 105, 106, 107, 109, 110, 111, 1105, 1109, 1201, 1299];
+testt = [106,107,110,111];
+inferencett = [1105 1109];
+Nhireptt = numel(hireptt);
+Ntt = numel(testt);
+disperses = simil.disperses;
+propneusilvec = simil.propneusilvec;
+ttoind = find(~ismember(hireptt, testt));
+
+fs = 12;
 
 %% SVM test and inference performance across LMLV slopes
 disperses = silrand.disperses;
@@ -206,15 +224,6 @@ for isp = 1:4
 end
 
 %% SVM score Spearman correlation (rank similarity) each cross-validation fold with trial mean vec
-hireptt = [0, 101, 105, 106, 107, 109, 110, 111, 1105, 1109, 1201, 1299];
-testt = [106,107,110,111];
-inferencett = [1105 1109];
-Nhireptt = numel(hireptt);
-Ntt = numel(testt);
-disperses = simil.disperses;
-propneusilvec = simil.propneusilvec;
-ttoind = find(~ismember(hireptt, testt));
-
 whichstat = 'avg';
 
 meanvecscorerholmlvsagg = cat(1, similagg.meanvecscorerholmlvs);
@@ -339,10 +348,19 @@ Ntt = numel(testt);
 ttoind = find(~ismember(hireptt, testt));
 disperses = simil.disperses;
 propneusilvec = simil.propneusilvec;
-iprop = propneusilvec==0.9;
+iprop = propneusilvec==0.5;
 
-whichstat = 'prct';
-fs = 12;
+whichstat = 'avg';
+switch whichstat
+    case 'avg'
+        ylab = 'mean rho(SVM score)';
+    case 'prct'
+        ylab = '% rho(SVM score)==1';
+    case 'medianpool'
+        ylab = 'median rho(SVM score)';
+    otherwise
+        error(['specify ' whichstat])
+end
 
 rhoxneusublmlvsagg = cat(1, similagg.rhoxneusublmlvs);
 rhoxneusublmlvstestagg = cat(1, rhoxneusublmlvsagg.test);
@@ -370,7 +388,7 @@ xl = [disperses(1) disperses(end)];
 plot(xl, mean(rhoxneusubasistestaggses)*[1 1], 'c-', 'LineWidth', 1)
 set(gca, 'FontSize', fs)
 xlabel('LMLV slopes')
-ylabel('% rho(SVM score)==1')
+ylabel(ylab)
 title('test trials vs trial mean')
 
 for ii = 1:numel(ttoind)
@@ -384,14 +402,11 @@ xl = [disperses(1) disperses(end)];
 plot(xl, mean(rhoxneusubasisttaggses)*[1 1], 'c-', 'LineWidth', 1)
 set(gca, 'FontSize', fs)
 xlabel('LMLV slopes')
-ylabel('% rho(SVM score)==1')
+ylabel(ylab)
 title(sprintf('Trial%d vs trial mean', hireptt(ttoind(ii))))
 end
 
 % %% SVM score Spearman correlation (rank similarity) across random subsets (per fixed proportion)
-% iprop = 3;
-% whichstat = 'medianpool';
-
 rhoxneusublmlvsagg = cat(1, similagg.rhoxneusublmlvs);
 rhoxneusublmlvstestagg = cat(1, rhoxneusublmlvsagg.testpair);
 rhoxneusublmlvstestaggstat = cat(5, rhoxneusublmlvstestagg.(whichstat));
@@ -417,7 +432,7 @@ xl = [disperses(1) disperses(end)];
 plot(xl, mean(rhoxneusubasistestaggses)*[1 1], 'c-', 'LineWidth', 1)
 set(gca, 'FontSize', fs)
 xlabel('LMLV slopes')
-ylabel('% rho(SVM score)==1')
+ylabel(ylab)
 title('test trial pairs')
 
 for ii = 1:numel(ttoind)
@@ -431,7 +446,120 @@ xl = [disperses(1) disperses(end)];
 plot(xl, mean(rhoxneusubasisttaggses)*[1 1], 'c-', 'LineWidth', 1)
 set(gca, 'FontSize', fs)
 xlabel('LMLV slopes')
-ylabel('% rho(SVM score)==1')
+ylabel(ylab)
 title(sprintf('Trial%d pairs', hireptt(ttoind(ii))))
 end
 
+%% SVM score Spearman correlation (rank similarity) across neural divisions
+whichstat = 'avg';
+switch whichstat
+    case 'avg'
+        ylab = 'mean rho(SVM score)';
+    case 'prct'
+        ylab = '% rho(SVM score)==1';
+    case 'medianpool'
+        ylab = 'median rho(SVM score)';
+    otherwise
+        error(['specify ' whichstat])
+end
+
+rhoxneudivlmlvsagg = cat(1, consistagg.rhoxneudivlmlvs);
+rhoxneudivlmlvstestagg = cat(1, rhoxneudivlmlvsagg.testpair);
+rhoxneudivlmlvstestaggstat = cat(4, rhoxneudivlmlvstestagg.(whichstat));
+rhoxneudivlmlvstestaggses = squeeze(mean(rhoxneudivlmlvstestaggstat,[1,2]))';
+rhoxneudivasisagg = cat(1, consistagg.rhoxneudivasis);
+rhoxneudivasistestagg = cat(1, rhoxneudivasisagg.testpair);
+rhoxneudivasistestaggstat = cat(3, rhoxneudivasistestagg.(whichstat));
+rhoxneudivasistestaggses = squeeze(mean(rhoxneudivasistestaggstat,[1,2]))';
+rhoxneudivlmlvssimilagg = cat(1, rhoxneudivlmlvsagg.similpair);
+rhoxneudivlmlvssimilaggstat = cat(4, rhoxneudivlmlvssimilagg.(whichstat));
+rhoxneudivlmlvssimilaggses = squeeze(mean(rhoxneudivlmlvssimilaggstat,1));
+rhoxneudivasissimilagg = cat(1, rhoxneudivasisagg.similpair);
+rhoxneudivasissimilaggstat = cat(3, rhoxneudivasissimilagg.(whichstat));
+rhoxneudivasissimilaggses = squeeze(mean(rhoxneudivasissimilaggstat,1));
+
+annot = sprintf('randomly silence %.0f%% of neurons: SVM score consistency between complementary neuronal divisions', 100*consist.propneu2sil);
+figure('Position',[0 0 900 900])
+annotation('textbox', [0.1 0.9 0.9 0.1], 'string', annot, 'edgecolor', 'none', 'FontSize', fs)
+subplot(3,3,1)
+hold all
+pl = plot(disperses,  rhoxneudivlmlvstestaggses);
+errorbar(disperses, mean(rhoxneudivlmlvstestaggses,1), std(rhoxneudivlmlvstestaggses,0,1)/sqrt(Nsessions), 'ko-', 'LineWidth', 2)
+xl = [disperses(1) disperses(end)];
+plot(xl, mean(rhoxneudivasistestaggses)*[1 1], 'c-', 'LineWidth', 1)
+set(gca,'FontSize', fs)
+xlabel('LMLV slopes')
+ylabel(ylab)
+title('test trial across splits')
+
+for ii = 1:numel(ttoind)
+    rhoscorelmlvsttaggses = squeeze(rhoxneudivlmlvssimilaggses(ttoind(ii),:,:))';
+    rhoscoreasisttaggses = squeeze(rhoxneudivasissimilaggses(ttoind(ii),:))';
+subplot(3,3,1+ii)
+hold all
+pl = plot(disperses,  rhoscorelmlvsttaggses);
+errorbar(disperses, mean(rhoscorelmlvsttaggses,1), std(rhoscorelmlvsttaggses,0,1)/sqrt(Nsessions), 'ko-', 'LineWidth', 2)
+xl = [disperses(1) disperses(end)];
+plot(xl, mean(rhoscoreasisttaggses)*[1 1], 'c-', 'LineWidth', 1)
+set(gca,'FontSize', fs)
+xlabel('LMLV slopes')
+ylabel(ylab)
+title(sprintf('Trial%d across splits', hireptt(ttoind(ii))))
+end
+
+%% SVM score Spearman correlation (rank similarity) across neural divisions
+whichstat = 'avg';
+switch whichstat
+    case 'avg'
+        ylab = 'mean rho(SVM score)';
+    case 'prct'
+        ylab = '% rho(SVM score)==1';
+    case 'medianpool'
+        ylab = 'median rho(SVM score)';
+    otherwise
+        error(['specify ' whichstat])
+end
+
+rhoxneudivlmlvsagg = cat(1, consistagg.rhoxneudivlmlvs);
+rhoxneudivlmlvstestagg = cat(1, rhoxneudivlmlvsagg.test);
+rhoxneudivlmlvstestaggstat = cat(4, rhoxneudivlmlvstestagg.(whichstat));
+rhoxneudivlmlvstestaggses = squeeze(mean(rhoxneudivlmlvstestaggstat,[1,2]))';
+rhoxneudivasisagg = cat(1, consistagg.rhoxneudivasis);
+rhoxneudivasistestagg = cat(1, rhoxneudivasisagg.test);
+rhoxneudivasistestaggstat = cat(3, rhoxneudivasistestagg.(whichstat));
+rhoxneudivasistestaggses = squeeze(mean(rhoxneudivasistestaggstat,[1,2]))';
+rhoxneudivlmlvssimilagg = cat(1, rhoxneudivlmlvsagg.simil);
+rhoxneudivlmlvssimilaggstat = cat(4, rhoxneudivlmlvssimilagg.(whichstat));
+rhoxneudivlmlvssimilaggses = squeeze(mean(rhoxneudivlmlvssimilaggstat,1));
+rhoxneudivasissimilagg = cat(1, rhoxneudivasisagg.simil);
+rhoxneudivasissimilaggstat = cat(3, rhoxneudivasissimilagg.(whichstat));
+rhoxneudivasissimilaggses = squeeze(mean(rhoxneudivasissimilaggstat,1));
+
+annot = sprintf('randomly silence %.0f%% of neurons: SVM score consistency between complementary neuronal divisions', 100*consist.propneu2sil);
+figure('Position',[0 0 900 900])
+annotation('textbox', [0.1 0.9 0.9 0.1], 'string', annot, 'edgecolor', 'none', 'FontSize', fs)
+subplot(3,3,1)
+hold all
+pl = plot(disperses,  rhoxneudivlmlvstestaggses);
+errorbar(disperses, mean(rhoxneudivlmlvstestaggses,1), std(rhoxneudivlmlvstestaggses,0,1)/sqrt(Nsessions), 'ko-', 'LineWidth', 2)
+xl = [disperses(1) disperses(end)];
+plot(xl, mean(rhoxneudivasistestaggses)*[1 1], 'c-', 'LineWidth', 1)
+set(gca,'FontSize', fs)
+xlabel('LMLV slopes')
+ylabel(ylab)
+title('test trials')
+
+for ii = 1:numel(ttoind)
+    rhoscorelmlvsttaggses = squeeze(rhoxneudivlmlvssimilaggses(ttoind(ii),:,:))';
+    rhoscoreasisttaggses = squeeze(rhoxneudivasissimilaggses(ttoind(ii),:))';
+subplot(3,3,1+ii)
+hold all
+pl = plot(disperses,  rhoscorelmlvsttaggses);
+errorbar(disperses, mean(rhoscorelmlvsttaggses,1), std(rhoscorelmlvsttaggses,0,1)/sqrt(Nsessions), 'ko-', 'LineWidth', 2)
+xl = [disperses(1) disperses(end)];
+plot(xl, mean(rhoscoreasisttaggses)*[1 1], 'c-', 'LineWidth', 1)
+set(gca,'FontSize', fs)
+xlabel('LMLV slopes')
+ylabel(ylab)
+title(sprintf('Trial%d', hireptt(ttoind(ii))))
+end
