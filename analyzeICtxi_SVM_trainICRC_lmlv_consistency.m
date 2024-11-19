@@ -15,6 +15,7 @@ load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1
 excludeneuvar0 = 0;
 fprintf('neuron exclusion criterion %d\n', excludeneuvar0)
 
+rng(111)
 for ises = numel(nwbsessions):-1:1
     clearvars -except excludeneuvar0 ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
     sesclk = tic;
@@ -28,36 +29,32 @@ for ises = numel(nwbsessions):-1:1
     svmdesc = 'trainICRC';
     switch excludeneuvar0
         case 0
-            svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
-            svmlmlvfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
-            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_incl_lmlvslopes.mat');
-            consistfn = strcat(pathpp, 'scoreconsistency_SVM_', svmdesc, '_lmlvslopes_incl.mat');
+            optexclneu = 'incl';
         case 1
-            svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
-            svmlmlvfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
-            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
-            consistfn = strcat(pathpp, 'scoreconsistency_SVM_', svmdesc, '_lmlvslopes_excltt.mat');
+            optexclneu = 'excltt';
         case 2
-            svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
-            svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
-            svmlmlvfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-            svmmdllmlvfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_lmlvslopes.mat');
-            consistfn = strcat(pathpp, 'scoreconsistency_SVM_', svmdesc, '_lmlvslopes_excl.mat');
+            optexclneu = 'excl';
         otherwise
             error('excludeneuvar0 option not recognized')
     end
     
+    svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_', optexclneu, '.mat');
+    
+    svmfndivs = cell(1,2);
+    for d = 1:2
+        svmfndivs{d} = strcat(pathpp, 'SVM', num2str(d), '_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_', optexclneu, '.mat');
+        svmmdlfndivs{d} = strcat(pathpp, 'SVMmodels', num2str(d), '_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_', optexclneu, '.mat');
+        svmlmlvfndivs{d} = strcat(pathpp, 'SVM', num2str(d), '_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_', optexclneu, '_lmlvslopes.mat');
+        svmmdllmlvfndivs{d} = strcat(pathpp, 'SVMmodels', num2str(d), '_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_', optexclneu, '_lmlvslopes.mat');
+    end
+    consistfn = strcat(pathpp, 'consistency_SVM12_', svmdesc, '_lmlvslopes_', optexclneu, '.mat');
+    
     load(svmfn)
-    load(svmmdlfn)
-    load(svmlmlvfn)
-    load(svmmdllmlvfn)
     
     % parametrically change proportion silenced
     propneu2sil = 0.5;
     % randomly select neurons to silence: sample 100X
-    Nneudivs = 10; % estimated ~30min for 100 samples
+    Nneudivs = 1; % estimated ~30min for 100 samples
     % propneusilvec = 0;
     % Nsamples = 1;
     Nneurons = SVMtrainICRC.Nneurons;
@@ -117,6 +114,10 @@ for ises = numel(nwbsessions):-1:1
         end
     end
     
+    SVMout1_lmlvs = struct();
+    SVMmodels1_lmlvs = struct();
+    SVMout2_lmlvs = struct();
+    SVMmodels2_lmlvs = struct();
     for islope = 0:numel(disperses)
         if islope==0
             tempR = reshape(spkcntICtt, Nrep*Nhireptt, Nneu)';
@@ -156,23 +157,26 @@ for ises = numel(nwbsessions):-1:1
             trialorder = reshape( repmat(hireptt,Nrep,1), 1,[]);
         end
         
-        if islope==0
-            SVMout = SVMtrainICRC;
-            SVM_models = SVMtrainICRC_models.spkcnt;
-            valneu = true(Nneurons,1);
-        else
-            SVMout = SVMtrainICRC_lmlvs(islope);
-            SVM_models = SVMtrainICRC_models_lmlvs(islope).spkcnt;
-            valneu = SVMout.valneu;
+        neu2silvec = false(nnz(valneu), 1);
+        neurand = randperm(nnz(valneu), round(propneu2sil*nnz(valneu)));
+        neu2silvec(neurand) = true;
+
+        cvtrials = struct();
+        cvtrials.optimizeSVM = 2;
+        cvtrials.loadcvpartition = true;
+        cvtrials.traintrialinds = traintrialinds;
+        cvtrials.testtrialinds = testtrialinds;
+        % SVMtrainICRC_models is 14 MB
+        [SVMout1, SVMmodels1] = computeICtxi_SVM(tempR, trialorder, ...
+            svmdesc, 'spkcnt', preproc, whichSVMkernel, cvtrials);
+        
+        SVMout1.neu2silvec = neu2silvec;
+        if islope>0 %&& excludeneuvar0>0
+            SVMout1.valneu = valneu;
         end
         
-        neu2silmat = false(Nneurons, Nneudivs);
-        for s = 1:Nneudivs
-            neurand = randperm(Nneurons, round(propneu2sil*Nneurons));
-            neu2silmat(neurand,s) = true;
-        end
         
-        for s = 1:size(neu2silmat,2) % Nsamples if 0<propneu2sil<1
+        
             trainscore = zeros(Nttrain, Ntt, Nsplits, Ntt);
             testscore = zeros(Nttest, Ntt, Nsplits, Ntt);
             similscore = zeros(Nrep, Ntt, Nsplits, Nhireptt);
@@ -208,11 +212,11 @@ for ises = numel(nwbsessions):-1:1
                 inftrials = ismember(SVMout.trialorder, inferencett);
                 
                 Xsilrand = Tp;
-                Xsilrand(:,neu2silmat(valneu,s)) = 0;
+                Xsilrand(:,neu2silvec) = 0;
                 [templabel,tempscore] = predict(SVM_models{isplit}, Xsilrand);
 
                 Xsilcompl = Tp;
-                Xsilcompl(:,~neu2silmat(valneu,s)) = 0;
+                Xsilcompl(:,~neu2silvec) = 0;
                 [compllabel,complscore] = predict(SVM_models{isplit}, Xsilcompl);                
                 
                 %                 if numel(unique(templabel))<Ntt
@@ -316,14 +320,35 @@ for ises = numel(nwbsessions):-1:1
                     end
                 end
             end
-            
-        end
+           
         
         if islope==0
+            save(svmfndivs{1}, 'preproc', 'whichSVMkernel', 'SVMout1', '-v7.3')
+            save(svmmdlfndivs{1}, 'preproc', 'whichSVMkernel', 'SVMmodels1', '-v7.3')
+            save(svmfndivs{2}, 'preproc', 'whichSVMkernel', 'SVMout2', '-v7.3')
+            save(svmmdlfndivs{2}, 'preproc', 'whichSVMkernel', 'SVMmodels2', '-v7.3')
             fprintf('silence %.2f, as-is done\n', propneu2sil)
         else
+            if islope==1
+                SVMout1_lmlvs = SVMout1;
+                SVMmodels1_lmlvs = SVMmodels1;
+                SVMout2_lmlvs = SVMout2;
+                SVMmodels2_lmlvs = SVMmodels2;
+            else
+                SVMout1_lmlvs(islope) = SVMout1;
+                SVMmodels1_lmlvs(islope) = SVMmodels1;
+                SVMout2_lmlvs(islope) = SVMout2;
+                SVMmodels2_lmlvs(islope) = SVMmodels2;
+            end
             fprintf('silence %.2f, lmlv slope %.2f done\n', propneu2sil, disperses(islope))
         end
+        
+    end
+    if islope==numel(disperses)
+        save(svmlmlvfndivs{1}, 'disperses', 'preproc', 'whichSVMkernel', 'SVMout1_lmlvs', '-v7.3')
+        save(svmmdllmlvfndivs{1}, 'disperses', 'preproc', 'whichSVMkernel', 'SVMmodels1_lmlvs', '-v7.3')
+        save(svmlmlvfndivs{2}, 'disperses', 'preproc', 'whichSVMkernel', 'SVMout2_lmlvs', '-v7.3')
+        save(svmmdllmlvfndivs{2}, 'disperses', 'preproc', 'whichSVMkernel', 'SVMmodels2_lmlvs', '-v7.3')
     end
     
     save(consistfn, 'excludeneuvar0', 'disperses', 'propneu2sil', 'rhoxneudivasis', 'rhoxneudivlmlvs')

@@ -37,7 +37,7 @@ for ises = numel(nwbsessions):-1:1
             svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt.mat');
             svmlmlvfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
             svmmdllmlvfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '_excltt_lmlvslopes.mat');
-            similfn = strcat(pathpp, 'scoresimilarity_SVM_trainICRC_lmlvslopes.mat_excltt');
+            similfn = strcat(pathpp, 'scoresimilarity_SVM_trainICRC_lmlvslopes_excltt.mat');
         case 2
             svmfn = strcat(pathpp, 'SVM_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
             svmmdlfn = strcat(pathpp, 'SVMmodels_', svmdesc, '_V1_', whichSVMkernel, '_', preproc, '.mat');
