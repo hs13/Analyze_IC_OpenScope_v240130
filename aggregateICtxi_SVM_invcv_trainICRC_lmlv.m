@@ -15,6 +15,9 @@ Nsessions = numel(nwbsessions);
 % types; if 2 exclude zero variance neurons in all trial types
 excludeneuvar0 = 0;
 fprintf('neuron exclusion criterion %d\n', excludeneuvar0)
+preproc = 'meancenter';
+whichSVMkernel = 'Linear';
+svmdesc = 'trainICRC';
 
 silrandagg = struct();
 similagg = struct();
@@ -26,7 +29,7 @@ for ises = 1:numel(nwbsessions)
 
     pltses = false;
     % optimizeSVM: 0 no optimization, 1 optimize hyperparameters, 2 onevsone, 3 onevsall
-    optimizeSVM = 0;
+    optimizeSVM = 2;
     switch optimizeSVM
         case 0
             optoptim = '_nooptim';
@@ -470,9 +473,9 @@ Ntt = numel(testt);
 ttoind = find(~ismember(hireptt, testt));
 disperses = simil.disperses;
 propneusilvec = simil.propneusilvec;
-iprop = propneusilvec==0.5;
+iprop = propneusilvec==0.9;
 
-whichstat = 'prct';
+whichstat = 'avg';
 
 rhoxneusublmlvsagg = cat(1, similagg.rhoxneusublmlvs);
 rhoxneusublmlvstestagg = cat(1, rhoxneusublmlvsagg.test);
@@ -490,7 +493,7 @@ rhoxneusubasissimilagg = cat(1, rhoxneusubasisagg.simil);
 rhoxneusubasissimilaggstat = cat(4, rhoxneusubasissimilagg.(whichstat));
 rhoxneusubasissimilaggses = squeeze(mean(rhoxneusubasissimilaggstat(:,iprop,:,:),1));
 
-figure
+figure('Position', [0 100 1000 1000])
 annotation('textbox', [0.1 0.9 0.9 0.1], 'string', sprintf('randomly silence %.0f%% of neurons: SVM score consistency between trial mean vector and neuronal subsets', 100*propneusilvec(iprop)), 'edgecolor', 'none')
 subplot(3,3,1)
 hold all
@@ -517,9 +520,9 @@ title(sprintf('Trial%d vs trial mean', hireptt(ttoind(ii))))
 end
 
 
-%% SVM score Spearman correlation (rank similarity) across random subsets (per fixed proportion)
-iprop = 10;
-whichstat = 'prct';
+% %% SVM score Spearman correlation (rank similarity) across random subsets (per fixed proportion)
+% iprop = 10;
+% whichstat = 'prct';
 
 rhoxneusublmlvsagg = cat(1, similagg.rhoxneusublmlvs);
 rhoxneusublmlvstestagg = cat(1, rhoxneusublmlvsagg.testpair);
@@ -536,7 +539,7 @@ rhoxneusubasissimilagg = cat(1, rhoxneusubasisagg.similpair);
 rhoxneusubasissimilaggstat = cat(5, rhoxneusubasissimilagg.(whichstat));
 rhoxneusubasissimilaggses = squeeze(rhoxneusubasissimilaggstat(1,iprop,:,:,:));
 
-figure
+figure('Position', [1000 100 1000 1000])
 annotation('textbox', [0.1 0.9 0.9 0.1], 'string', sprintf('randomly silence %.0f%% of neurons: SVM score consistency across neuronal subsets', 100*propneusilvec(iprop)), 'edgecolor', 'none')
 subplot(3,3,1)
 hold all

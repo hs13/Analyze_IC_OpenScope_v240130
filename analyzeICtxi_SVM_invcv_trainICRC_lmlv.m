@@ -497,7 +497,10 @@ for ises = numel(nwbsessions):-1:1
                         trialsoi = SVMout.trialorder(inftrials)==inferencett(itt);
                         [v,c]=uniquecnt(infpred(trialsoi));
                         infperf(itt, ismember(testt,v)) = c/nnz(trialsoi);
+                    end
 
+                    % similarity inference
+                    for itt = 1:Nhireptt
                         similttscore = tempscore(trialorder==hireptt(itt),:);
                         similscore(:,:,isplit,itt) = similttscore;
                     end

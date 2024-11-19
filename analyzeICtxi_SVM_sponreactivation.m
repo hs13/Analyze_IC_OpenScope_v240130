@@ -15,6 +15,14 @@ for ises = 1:Nsessions
     fprintf('%s %d\n', mousedate, ises)
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
     load([pathpp, 'postprocessed.mat'])
+    load([pathpp, 'qc_units.mat'])
+
+    neuV1 = contains(neuallloc, 'VISp') & ~contains(neuallloc, 'VISpm');
+    neuvis = contains(neuallloc, 'VIS');
+    neuRS = unit_wfdur>0.4;
+    neufilt = (unit_isi_violations<0.5 & unit_amplitude_cutoff<0.5 & unit_presence_ratio>0.9);
+
+    neuV1RS = neuV1 & neuRS;
 
     % if 0, keep all neurons; if 1, exclude zero variance neurons in train trial
     % types; if 2 exclude zero variance neurons in all trial types
@@ -25,7 +33,7 @@ for ises = 1:Nsessions
     Ntt = numel(testt);
     whichblock = 'ICwcfg1_presentations';
     trialorder = vis.(whichblock).ICtrialtypes(vis.(whichblock).trialorder+1);
-    tempspkcnt = 0.4*Rall.(whichblock)';
+    tempspkcnt = 0.4*Rall.(whichblock)(:,neuV1RS)';
 
     preproc = 'zscore';
     whichSVMkernel = 'Linear';
@@ -145,7 +153,7 @@ for ises = 1:Nsessions
 end
 
 
-%%
+%% calculate spontaneous reactivaton coefficient
 if ismac
     drivepath = '/Users/hyeyoung/Library/CloudStorage/GoogleDrive-shinehyeyoung@gmail.com/My Drive/';
     codepath = '/Users/hyeyoung/Documents/CODE/';
@@ -158,20 +166,22 @@ nwbsessions = {'sub-619293', 'sub-619296', 'sub-620333', 'sub-620334', ...
     'sub-625545', 'sub-625554', 'sub-625555', 'sub-630506', ...
     'sub-631510', 'sub-631570', 'sub-633229', 'sub-637484'};
 Nsessions = numel(nwbsessions);
-load([drivepath 'RESEARCH/logmean_logvar/OpenScope_spkcnt_ICwcfg1.mat'])
-load([drivepath 'RESEARCH/logmean_logvar/OpenScopeIC_representationsimilarity_V1.mat'])
-load([drivepath 'RESEARCH/ICexpts_revision23/openscope_psthavgall.mat'])
-
 optimizeSVM = 2;
 
+pltses = false;
+if pltses
+    load([drivepath 'RESEARCH/ICexpts_revision23/openscope_psthavgall.mat'])
+end
+
 for ises = 1:numel(nwbsessions)
-    clearvars -except optimizeSVM ises nwbsessions spkcntIChiV1agg hireptt lmlvslope lmlvyintercept
+    clearvars -except optimizeSVM ises nwbsessions pltses psthavgall sesneuall
     mousedate = nwbsessions{ises};
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
+    disp(mousedate)
 
     preproc = 'meancenter';
     whichSVMkernel = 'Linear';
-    svmdesc = 'trainICRC';
+    svmdesc = 'trainBK';
     % optimizeSVM: 0 no optimization, 1 optimize hyperparameters, 2 onevsone, 3 onevsall
     switch optimizeSVM
         case 0
@@ -193,6 +203,7 @@ for ises = 1:numel(nwbsessions)
     load(svmmdlfn)
 
     %% decode spontaneous activity
+    load([pathpp, 'postprocessed.mat'])
     load([pathpp, 'psth_spontaneous.mat'])
     load([pathpp, 'qc_units.mat'])
 
@@ -204,6 +215,10 @@ for ises = 1:numel(nwbsessions)
     neuV1RS = neuV1 & neuRS;
     %neuvisRS = neuvis & neuRS;
 
+    whichblock = 'ICwcfg1_presentations';
+    trialorder = vis.(whichblock).ICtrialtypes(vis.(whichblock).trialorder+1);
+    tempR = 0.4*Rall.(whichblock)(:,neuV1RS)';
+
     spondurs = vis.spontaneous_presentations.stop_time-vis.spontaneous_presentations.start_time;
     [mv,mi]=max(spondurs);
     whichsponind = find(vis.spontaneous_presentations.start_time==vis.ICwcfg1_presentations.stop_time(end));
@@ -211,14 +226,6 @@ for ises = 1:numel(nwbsessions)
     if whichsponind~=mi
         warning('spontaneous bock after ICwcfg1 is not the longest spontaneous block')
     end
-
-    tempspkcnt = cat(3,spkcntIChiV1agg{ises}{:});
-    Nrep = size(tempspkcnt,1);
-    Nneu = size(tempspkcnt,2);
-    Nhireptt = numel(hireptt);
-    spkcntICtt = permute(tempspkcnt, [1 3 2]); % Nrep * Nnstt * Nneu
-    tempR = reshape(spkcntICtt, Nrep*Nhireptt, Nneu)';
-
 
     % preprocess spontaneous data
     % tempR is 400ms-window spike count formatted #neurons * #trials
@@ -239,54 +246,65 @@ for ises = 1:numel(nwbsessions)
         tempspon(ci,:) = sum(temppsthvec(Tspkinds), 1);
     end
 
-    testt = SVMtrainICRC.trialtypes;
+    testt = SVMtrainBK.trialtypes;
     Ntt = numel(testt);
-    Nsplits = size(SVMtrainICRC.spkcnt.testtrialinds,2);
-    SVMtrainICRC.spkcnt.spon.activity = tempspon';
-    SVMtrainICRC.spkcnt.spon.label = NaN(size(Tspkinds,2), Nsplits);
-    SVMtrainICRC.spkcnt.spon.score = NaN(size(Tspkinds,2), Ntt, Nsplits);
+    Nsplits = size(SVMtrainBK.spkcnt.testtrialinds,2);
+    SVMtrainBK.spkcnt.spon.activity = tempspon';
+    SVMtrainBK.spkcnt.spon.label = NaN(size(Tspkinds,2), Nsplits);
+    SVMtrainBK.spkcnt.spon.score = NaN(size(Tspkinds,2), Ntt, Nsplits);
     for isplit = 1:Nsplits
-        traintrialinds = SVMtrainICRC.spkcnt.traintrialinds(:,isplit);
+        traintrialinds = SVMtrainBK.spkcnt.traintrialinds(:,isplit);
         % testtrialinds = SVMtrainICRC.spkcnt.testtrialinds(:,isplit);
         switch preproc
             case 'none'
-                Tp = tempspon';
+                Tp = tempR';
+                Xspon = tempspon';
             case 'zscore'
                 % Z-score
                 trainRmean = mean(tempR(:,traintrialinds),2);
                 trainRstd = std(tempR(:,traintrialinds),0,2);
 
-                Tp = ( (tempspon-trainRmean)./trainRstd )';
+                Tp = ( (tempR-trainRmean)./trainRstd )';
+                Xspon = ( (tempspon-trainRmean)./trainRstd )';
             case 'minmax'
                 trainRmin = min(tempR(:,traintrialinds),[],2);
                 trainRrange = range(tempR(:,traintrialinds),2);
 
-                Tp = ( (tempspon-trainRmin)./trainRrange )';
+                Tp = ( (tempR-trainRmin)./trainRrange )';
+                Xspon = ( (tempspon-trainRmin)./trainRrange )';
             case 'meancenter'
                 trainRmean = mean(tempR(:,traintrialinds),2);
-                Tp = (tempspon-trainRmean)';
+
+                Tp = (tempR-trainRmean)';
+                Xspon = (tempspon-trainRmean)';
         end
         Tp(isnan(Tp))=0; % Ntrials * Nneurons
-        [templabel,tempscore] = predict(SVMtrainICRC_models.spkcnt{isplit}, Tp);
+        [templabel,tempscore] = predict(SVMtrainBK_models.spkcnt{isplit}, Tp);
+        if ~isequal(templabel, SVMtrainBK.spkcnt.all.label(:,isplit) )
+            error('check decoding')
+        end
 
-        SVMtrainICRC.spkcnt.spon.label(:,isplit) = templabel;
-        SVMtrainICRC.spkcnt.spon.score(:,:,isplit) = tempscore;
+        Xspon(isnan(Xspon))=0; % Ntrials * Nneurons
+        [Xlabel, Xscore] = predict(SVMtrainBK_models.spkcnt{isplit}, Xspon);
+
+        SVMtrainBK.spkcnt.spon.label(:,isplit) = Xlabel;
+        SVMtrainBK.spkcnt.spon.score(:,:,isplit) = Xscore;
     end
 
     % calculate reactivation coefficient
     reactivcoeff = zeros(nnz(neuV1RS), Ntt);
     for itt = 1:Ntt
-        sponpredtt = mean(SVMtrainICRC.spkcnt.spon.label==testt(itt),2);
-        reactivcoeff(:,itt) = corr(SVMtrainICRC.spkcnt.spon.activity, sponpredtt);
+        sponpredtt = mean(SVMtrainBK.spkcnt.spon.label==testt(itt),2);
+        reactivcoeff(:,itt) = corr(SVMtrainBK.spkcnt.spon.activity, sponpredtt);
     end
 
 
     svmsponfn = strcat(pathpp, 'SVMspon', num2str(whichsponind), '_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat');
-    save(svmsponfn, 'neuV1RS', 'Twin', 'Tslide', 'Tstartind', 'Tctr', 'SVMtrainICRC', 'reactivcoeff')
+    save(svmsponfn, 'neuV1RS', 'Twin', 'Tslide', 'Tstartind', 'Tctr', 'SVMtrainBK', 'reactivcoeff')
 
     %
-    pltses = false;
     if pltses
+        %{
         load([pathpp, 'visresponses.mat'])
         figure;
         for itt = 1:4
@@ -313,6 +331,7 @@ for ises = 1:numel(nwbsessions)
             histogram(reactivcoeff(neuoj==1,itt), 'BinEdges', h.BinEdges)
             title(testt(itt))
         end
+        %}
 
         kerwinhalf = 12; kersigma = 5;
         kergauss = normpdf( (-kerwinhalf:kerwinhalf)', 0,kersigma);
@@ -321,11 +340,11 @@ for ises = 1:numel(nwbsessions)
         temppsthavg = convn(sespsthavg(:,:,neuV1RS), kergauss, 'same');
         neu2plt = find(neuV1RS);
 
-        tt2p = testt;
+        tt2p = [106   107   110   111];
         ttcol = [0 .4 0; .5 0.25 0; 1 0.5 0; 0 1 0];
         Ntop = 7;
-        figure
-        for itt = 1:4
+        figure('Position', [100 100 2000 1500])
+        for itt = 1:5
             [sv,si]=sort(reactivcoeff(:,itt), 'descend', 'MissingPlacement', 'last');
             for ii = 1:Ntop
                 subplot(Ntt,Ntop,Ntop*(itt-1)+ii)
@@ -334,10 +353,9 @@ for ises = 1:numel(nwbsessions)
                     plot(psthtli, temppsthavg(:,ICtrialtypes==tt2p(typi),si(ii)), 'Color', ttcol(typi,:), 'LineWidth', 1)
                 end
                 xlim([-200 600])
-                title(sprintf('Trial%d Cell%d reactivation coeff. %.4f', testt(itt), neu2plt(si(ii)), sv(ii)))
+                title(sprintf('Trial%d Cell%d react. coeff. %.4f', testt(itt), neu2plt(si(ii)), sv(ii)))
             end
         end
     end
-
 
 end
