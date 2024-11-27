@@ -1,6 +1,6 @@
 if ismac
     drivepath = '/Users/hyeyoung/Library/CloudStorage/GoogleDrive-shinehyeyoung@gmail.com/My Drive/';
-    codepath = '/Users/hyeyoung/Documents/CODE/Analyze_IC_OpenScope_v240130/';
+    codepath = '/Users/hyeyoung/Documents/CODE/';
 else
     drivepath = 'G:/My Drive/';
     codepath = 'C:\Users\USER\GitHub\';
