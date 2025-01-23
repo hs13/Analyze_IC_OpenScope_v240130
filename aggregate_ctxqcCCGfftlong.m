@@ -83,6 +83,67 @@ save('G:\My Drive\RESEARCH\ICexpts_revision23\openscope_ctxCCGfftagg.mat', ...
     'Nneurons_visarea', 'neuctxagg', 'neulocctxagg', 'visarealabelagg', 'sesctxagg', ...
     'ctxCCGjcpostpkagg', 'ctxCCGjcpostTpkagg', 'ctxCCGjcprepkagg', 'ctxCCGjcpreTpkagg', 'ctxCCGflankstdagg', '-v7.3')
 
+%%
+ccgpath = 'S:\OpenScopeData\00248_v240130\CCG\';
+
+% 'neuctrctx', 'neulocctrctx', 'visarealabels', 'CCGtli', 'ctrctxCCG', 'ctrctxCCGweight'
+neuctxagg = [];
+neulocctxagg = [];
+Nneurons_visarea = NaN(Nsessions,6);
+visarealabelagg = [];
+sesctxagg = [];
+ctxCCGmean4msagg = cell(Nsessions,1);
+
+tic
+for ises = ses2anal
+    fprintf('%d/%d %s\n', ises, Nsessions, nwbsessions{ises})
+    clearvars ctxCCGfft ctxCCGweight visarealabels neuctx neulocctx
+
+    pathccg = [ccgpath nwbsessions{ises} filesep];
+    load([pathccg 'ctxCCGfftnew.mat'])
+    [v,c]=uniquecnt(visarealabels);
+    Nneurons_visarea(ises,ismember(1:6, v)) = c(ismember(v,1:6));
+    neuctxagg = cat(1, neuctxagg, neuctx);
+    neulocctxagg = cat(1, neulocctxagg, neulocctx);
+    visarealabelagg = cat(1, visarealabelagg, visarealabels);
+    sesctxagg = cat(1, sesctxagg, ises*ones(size(visarealabels)) );
+
+    tli4ms = CCGtli_fft>0 & CCGtli_fft<=4;
+    ctxCCGmean4msagg{ises} = mean(ctxCCGfftnew(:,:,tli4ms),3);
+
+    toc
+end
+
+
+ctxCCGflankstd = std(ctxCCGfftnew(:,:,abs(CCGtli_fft)>=50),0,3);
+ctxCCGflankstdpost = std(ctxCCGfftnew(:,:,CCGtli_fft>=50),0,3);
+ctxCCGflankstdpre = std(ctxCCGfftnew(:,:,CCGtli_fft<=-50),0,3);
+figure; 
+for isp = 1:4
+    switch isp
+        case 1
+            tempx = repmat(spkcntvec,1,length(spkcntvec));
+            tempy = ctxCCGflankstdpost;
+        case 2
+            tempx = repmat(spkcntvec,1,length(spkcntvec))';
+            tempy = ctxCCGflankstdpost;
+        case 3
+            tempx = repmat(spkcntvec,1,length(spkcntvec));
+            tempy = ctxCCGflankstd;
+        case 4
+            tempx = repmat(spkcntvec,1,length(spkcntvec))';
+            tempy = ctxCCGflankstd;
+    end
+subplot(2,2,isp)
+plot(tempx, tempy, 'o')
+tempR = corr(tempx(:),tempy(:), 'rows', 'complete');
+title( sprintf('R=%.4f', tempR))
+end
+
+
+save('G:\My Drive\RESEARCH\ICexpts_revision23\openscope_ctxCCGmean4ms_geonormagg.mat', ...
+    'Nneurons_visarea', 'neuctxagg', 'neulocctxagg', 'visarealabelagg', 'sesctxagg', 'ctxCCGmean4msagg', '-v7.3')
+
 %% report number of neurons
 fprintf('V1 neurons mean %.4f sem %.4f\n', nanmean(Nneurons_visarea(:,1)), ...
     nanstd(Nneurons_visarea(:,1))/sqrt(size(Nneurons_visarea,1)) )
