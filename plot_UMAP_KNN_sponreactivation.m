@@ -1,4 +1,3 @@
-%{
 datadir = 'S:\OpenScopeData\00248_v240130\';
 nwbdir = dir(datadir);
 nwbsessions = {nwbdir.name};
@@ -6,68 +5,43 @@ nwbsessions = nwbsessions(~contains(nwbsessions, 'Placeholder') & ...
     ( contains(nwbsessions, 'sub-') | contains(nwbsessions, 'sub_') ));
 Nsessions = numel(nwbsessions);
 
+testacc_dims_agg = [];
 for ises = 1:Nsessions
-    clearvars -except ises nwbsessions
-    sesclk = tic;
     mousedate = nwbsessions{ises};
-    fprintf('%s %d\n', mousedate, ises)
     pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
-
-    load([pathpp, 'postprocessed.mat'])
-    load([pathpp, 'psth_spontaneous.mat'])
-    load([pathpp, 'qc_units.mat'])
-
-    neuV1 = contains(neuallloc, 'VISp') & ~contains(neuallloc, 'VISpm');
-    neuvis = contains(neuallloc, 'VIS');
-    neuRS = unit_wfdur>0.4;
-    neufilt = (unit_isi_violations<0.5 & unit_amplitude_cutoff<0.5 & unit_presence_ratio>0.9);
-
-    neuV1RS = neuV1 & neuRS;
-    %neuvisRS = neuvis & neuRS;
-
-    whichblock = 'ICwcfg1_presentations';
-    trialorder = vis.(whichblock).ICtrialtypes(vis.(whichblock).trialorder+1);
-    tempR = 0.4*Rall.(whichblock)(:,neuV1RS)';
-
-    spondurs = vis.spontaneous_presentations.stop_time-vis.spontaneous_presentations.start_time;
-    [mv,mi]=max(spondurs);
-    whichsponind = find(vis.spontaneous_presentations.start_time==vis.ICwcfg1_presentations.stop_time(end));
-    fprintf('spontaneous bock after ICwcfg1 is %.3fs long\n', spondurs(whichsponind))
-    if whichsponind~=mi
-        warning('spontaneous bock after ICwcfg1 is not the longest spontaneous block')
-    end
-
-    % preprocess spontaneous data
-    % tempR is 400ms-window spike count formatted #neurons * #trials
-    temppsth = psthspon{whichsponind}(:,neuV1RS);
-    Ttot = size(temppsth,1);
-    Twin = 400; % Tres must be 0.001s (1ms)
-    Tslide = 25;
-    Ntwins = floor( (Ttot-Twin)/Tslide );
-    Tstartind = mod(Ttot-Twin, Tslide);
-    Tspkinds = Tstartind+( (1:Twin)'+(0:Tslide:Ttot-Twin) );
-    if Tspkinds(end,end) ~= Ttot
-        error('check code')
-    end
-    Tctr = Tspkinds(round(Twin/2),:);
-    psthsponspkcnt = zeros( nnz(neuV1RS), size(Tspkinds,2) );
-    for ci = 1:nnz(neuV1RS)
-        temppsthvec = temppsth(:,ci);
-        psthsponspkcnt(ci,:) = sum(temppsthvec(Tspkinds), 1);
-    end
-
-    save([pathpp, 'psth_spontaneous_spikecount_V1RS.mat'], 'whichsponind', 'neuV1RS', 'Tspkinds', 'psthsponspkcnt')
-end
-%}
-
-%% 
-    mousedate = 'sub-619296';
-    pathpp = ['S:\OpenScopeData\00248_v240130\postprocessed' filesep mousedate filesep];
-load([pathpp 'UMAP_KNN_decoding_V1RS_spontaneous.mat'])
-load([pathpp 'UMAP_KNN_2fold_decoding_V1RS_spontaneous.mat'])
 load([pathpp 'UMAP_KNN_decoding_V1RS_spontaneous_embeddims.mat'])
-load([pathpp 'psth_spontaneous_spikecount_V1RS.mat'])
-load([pathpp 'spkcnt_ICwcfg1_hireptt_V1RS_lmlv.mat'])
+% load([pathpp 'psth_spontaneous_spikecount_V1RS.mat'])
+% load([pathpp 'spkcnt_ICwcfg1_hireptt_V1RS_lmlv.mat'])
+
+% whichsponind=2;
+% load(strcat(pathpp, 'SVMspon', num2str(whichsponind), '_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat'))
+
+Nsplits = length(UMAPKNN_dimensions{1}.accuracy);
+testacc_dims = zeros(Nsplits, numel(embedding_dimensions));
+for idim = 1:numel(embedding_dimensions)
+    testacc_dims(:,idim) = UMAPKNN_dimensions{idim}.accuracy;
+end
+
+testacc_dims_agg = cat(3,testacc_dims_agg,testacc_dims);
+end
+
+fs = 14;
+validsesinds = 2:Nsessions;
+%% embedding dimensions
+testacc_dims_ses = squeeze(mean(testacc_dims_agg,1));
+figure; hold all
+plot(embedding_dimensions, testacc_dims_ses, '-')
+errorbar(embedding_dimensions, mean(testacc_dims_ses,2), std(testacc_dims_ses,0,2)/sqrt(size(testacc_dims_ses,2)), 'ko-', 'LineWidth', 2)
+set(gca, 'FontSize', fs)
+xlabel('UMAP Embedding Dimensions')
+ylabel('10-fold cross-validated accuracy')
+title('unsupervised UMAP+KNN decoding across sessions')
+
+[p,tbl,stats]=friedman(testacc_dims_ses(:,validsesinds)');
+% [p,tbl,stats]=friedman(testacc_dims_ses');
+figure; multcompare(stats)
+
+%% RESUME EDITING HERE
 
 hireptt = unique(trialorder);
 Nhireptt = numel(hireptt);
@@ -87,35 +61,6 @@ trialcol(hireptt==1109,:) = [0 0 0.5];
 trialcol(hireptt==1201,:) = [1 0 1];
 trialcol(hireptt==1299,:) = [0.5 0 0.5];
 
-whichsponind=2;
-load(strcat(pathpp, 'SVMspon', num2str(whichsponind), '_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat'))
-
-fs = 14;
-%% embedding dimensions
-cvaccmat_dims = zeros(Nsplits, numel(embedding_dimensions));
-for idim = 1:numel(embedding_dimensions)
-    cvaccmat_dims(:,idim) = UMAPKNN_dimensions{idim}.accuracy;
-end
-
-figure; hold all
-plot(embedding_dimensions, cvaccmat_dims', '.')
-errorbar(embedding_dimensions, mean(cvaccmat_dims,1), std(cvaccmat_dims,0,1)/sqrt(Nsplits), 'ko-', 'LineWidth', 2)
-set(gca, 'FontSize', fs)
-xlabel('UMAP Embedding Dimensions')
-ylabel('10-fold cross-validated accuracy')
-title([mousedate ' unsupervised UMAP+KNN decoding'])
-
-[p,tbl,stats]=kruskalwallis(cvaccmat_dims);
-multcompare(stats)
-
-%% compare test accuracy between UMAP settings
-cvaccmat = [UMAPKNN_semisup.accuracy' UMAPKNN_unsup.accuracy' UMAPKNN_semisup_invcv.accuracy' UMAPKNN_unsup_invcv.accuracy' ];
-[p,tbl,stats]=kruskalwallis(cvaccmat);
-multcompare(stats)
-figure; hold all
-plot(1:4, cvaccmat', '.')
-errorbar(1:4, mean(cvaccmat,1), std(cvaccmat,0,1)/sqrt(Nsplits), 'ko-', 'LineWidth', 2)
-set(gca, 'XTick', 1:4, 'XTickLabel', {'semi-sup. 10-fold CV', 'unsup. 10-fold CV', 'semi-sup. inv.-CV', 'unsup. inv.-CV'}, 'XTickLabelRotation', 45)
 
 %% check consistency of spontaneous reactivations between UMAP settings
 threshcv = 0.8; % out of Nsplits decoders, how many agreed to the same solution?
