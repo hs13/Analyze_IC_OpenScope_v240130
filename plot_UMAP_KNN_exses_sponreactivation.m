@@ -91,8 +91,9 @@ trialcol(hireptt==1109,:) = [0 0 0.5];
 trialcol(hireptt==1201,:) = [1 0 1];
 trialcol(hireptt==1299,:) = [0.5 0 0.5];
 
-whichsponind=2;
-load(strcat(pathpp, 'SVMspon', num2str(whichsponind), '_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat'))
+% TODO: COMPARE WITH SVM
+% whichsponind=2;
+% load(strcat(pathpp, 'SVMspon', num2str(whichsponind), '_invcv_', svmdesc, optoptim, '_V1_', whichSVMkernel, '_', preproc, '_incl.mat'))
 
 fs = 14;
 %% embedding dimensions
@@ -260,7 +261,7 @@ for f = 1:numel(decodersettings)
         trialsoi = find( tempUMAPKNN.test_truelabels(isplit,:)==hireptt(itt) );
         P = double( squeeze(tempUMAPKNN.test_embeddings(isplit,trialsoi,:)) );
         distances = mahal(P, P);
-        % Define a threshold for outlier detection (e.g., 99% confidence level)
+        % Define a threshold for outlier detection (e.g., 95% confidence level)
         threshold = chi2inv(0.95, size(P, 2)); % Chi-square critical value
         outliers = distances > threshold;
         % Remove outliers

@@ -236,12 +236,19 @@ nwbsessions = {'sub-619293', 'sub-619296', 'sub-620333', 'sub-620334', ...
     'sub-625545', 'sub-625554', 'sub-625555', 'sub-630506', ...
     'sub-631510', 'sub-631570', 'sub-633229', 'sub-637484'};
 
+threshmode = 1; % include thresh. 0.6 or above. 
+
 testacc_unsup5_origagg = [];
 infperf_unsup5_origagg = [];
 infscore_unsup5_origagg = [];
 testacc_unsup5_lmlvsagg = [];
 infperf_unsup5_lmlvsagg = [];
 infscore_unsup5_lmlvsagg = [];
+
+infmode_unsup5_origagg = [];
+infmodescore_unsup5_origagg = [];
+infmode_unsup5_lmlvsagg = [];
+infmodescore_unsup5_lmlvsagg = [];
 
 lmlvslope_list = 0:0.2:2;
 for ises = 1:numel(nwbsessions)
@@ -270,9 +277,23 @@ fprintf('as-is data\n')
 disp(mean(infperf,3))
 disp(mean(infscore))
 
+% note that rows in infmode don't add up to 1 because we're not counting the trials 
+% where less than threshmode of the K-fold decoders agreed on a prediction
+[probemode, probemodecnt] = mode(UMAPorig_unsup5dim.probe_predlabels,1);
+validprobemode = probemodecnt>=threshmode;
+infmode = zeros( numel(inferencett), numel(testt));
+for ii = 1:numel(inferencett)
+    trialsoi = trialorder==inferencett(ii);
+    [v,c] = uniquecnt( probemode(trialsoi & validprobemode) );
+    infmode(ii, ismember(testt,v)) = c/nnz(trialsoi);
+end
+infmodescore = squeeze( (( infmode(1,1)-infmode(1,2) )+( infmode(2,4)-infmode(2,3) ))/2 );
+
+testacc_orig = reshape(UMAPorig_unsup5dim.accuracy,Nsplits,1);
 infperf_orig = infperf;
 infscore_orig = infscore;
-testacc_orig = reshape(UMAPorig_unsup5dim.accuracy,Nsplits,1);
+infmode_orig = infmode;
+infmodescore_orig = infmodescore;
 
 infperf_lmlvs = zeros( numel(inferencett), numel(testt), Nsplits, numel(lmlvslope_list));
 infscore_lmlvs = NaN(Nsplits, numel(lmlvslope_list));
@@ -293,8 +314,28 @@ for islope = 1:numel(lmlvslope_list)
 
     infperf_lmlvs(:,:,:,islope) = infperf;
     infscore_lmlvs(:,islope) = infscore;
-testacc_lmlvs(:,islope) = UMAPlmlv_unsup5dim{islope}.accuracy;
+    testacc_lmlvs(:,islope) = UMAPlmlv_unsup5dim{islope}.accuracy;
 end
+
+% note that rows in infmode don't add up to 1 because we're not counting the trials 
+% where less than threshmode of the K-fold decoders agreed on a prediction
+infmode_lmlvs = zeros( numel(inferencett), numel(testt), numel(lmlvslope_list));
+infmodescore_lmlvs = NaN(numel(lmlvslope_list),1);
+for islope = 1:numel(lmlvslope_list)
+[probemode, probemodecnt] = mode(UMAPlmlv_unsup5dim{islope}.probe_predlabels,1);
+validprobemode = probemodecnt>=threshmode;
+infmode = zeros( numel(inferencett), numel(testt));
+for ii = 1:numel(inferencett)
+    trialsoi = trialorder==inferencett(ii);
+    [v,c] = uniquecnt( probemode(trialsoi & validprobemode) );
+    infmode(ii, ismember(testt,v)) = c/nnz(trialsoi);
+end
+infmodescore = squeeze( (( infmode(1,1)-infmode(1,2) )+( infmode(2,4)-infmode(2,3) ))/2 );
+
+    infmode_lmlvs(:,:,islope) = infmode;
+    infmodescore_lmlvs(islope) = infmodescore;
+end
+
 
 testacc_unsup5_origagg = cat(2, testacc_unsup5_origagg, testacc_orig);
 testacc_unsup5_lmlvsagg = cat(3, testacc_unsup5_lmlvsagg, testacc_lmlvs);
@@ -304,6 +345,10 @@ infscore_unsup5_origagg = cat(2, infscore_unsup5_origagg, infscore_orig);
 infperf_unsup5_lmlvsagg = cat(5, infperf_unsup5_lmlvsagg, infperf_lmlvs);
 infscore_unsup5_lmlvsagg = cat(3, infscore_unsup5_lmlvsagg, infscore_lmlvs);
 
+infmode_unsup5_origagg = cat(3, infmode_unsup5_origagg, infmode_orig);
+infmodescore_unsup5_origagg = cat(2, infmodescore_unsup5_origagg, infmodescore_orig);
+infmode_unsup5_lmlvsagg = cat(4, infmode_unsup5_lmlvsagg, infmode_lmlvs);
+infmodescore_unsup5_lmlvsagg = cat(2, infmodescore_unsup5_lmlvsagg, infmodescore_lmlvs);
 end
 
 %%
@@ -338,6 +383,7 @@ axis square
 title(sprintf('Slope %.2f', lmlvslope_list(islope)))
 end
 end
+
 %%
 % figure
 % subplot(1,2,1)
@@ -374,6 +420,39 @@ subplot(2,2,4)
 hold all
 plot(lmlvslope_list, squeeze(mean(infperf_unsup5_lmlvsagg(2,4,:,:,:), 3)))
 plot(lmlvslope_list, squeeze(mean(infperf_unsup5_lmlvsagg(2,4,:,:,:), [3,5])), 'k-', 'LineWidth', 2)
+set(gca, 'XGrid', 'on', 'YGrid', 'on')
+xlabel('log(mean) vs log(var) slope')
+ylabel('P(TRE2->IC2)')
+
+%%
+figure; 
+annotation("textbox", [0.1 0.9 0.9 0.1], 'String', 'Unsupervised UMAP: 5-dimensional embedding, consensus decoding', 'edgecolor', 'none')
+subplot(2,2,1)
+hold all
+plot(lmlvslope_list, squeeze(mean(testacc_unsup5_lmlvsagg, 1)))
+plot(lmlvslope_list, squeeze(mean(testacc_unsup5_lmlvsagg, [1, 3])), 'k-', 'LineWidth', 2)
+set(gca, 'XGrid', 'on', 'YGrid', 'on')
+xlabel('log(mean) vs log(var) slope')
+ylabel('test accuracy')
+subplot(2,2,2)
+hold all
+plot(lmlvslope_list, infmodescore_unsup5_lmlvsagg )
+plot(lmlvslope_list, mean(infmodescore_unsup5_lmlvsagg, 2), 'k-', 'LineWidth', 2)
+set(gca, 'XGrid', 'on', 'YGrid', 'on')
+xlabel('log(mean) vs log(var) slope')
+ylabel('inference mode score')
+
+subplot(2,2,3)
+hold all
+plot(lmlvslope_list, squeeze(infmode_unsup5_lmlvsagg(1,1,:,:)) )
+plot(lmlvslope_list, squeeze(mean(infmode_unsup5_lmlvsagg(1,1,:,:), 4)), 'k-', 'LineWidth', 2)
+set(gca, 'XGrid', 'on', 'YGrid', 'on')
+xlabel('log(mean) vs log(var) slope')
+ylabel('P(TRE1->IC1)')
+subplot(2,2,4)
+hold all
+plot(lmlvslope_list, squeeze(infmode_unsup5_lmlvsagg(2,4,:,:)) )
+plot(lmlvslope_list, squeeze(mean(infmode_unsup5_lmlvsagg(2,4,:,:), 4)), 'k-', 'LineWidth', 2)
 set(gca, 'XGrid', 'on', 'YGrid', 'on')
 xlabel('log(mean) vs log(var) slope')
 ylabel('P(TRE2->IC2)')
