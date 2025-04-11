@@ -534,7 +534,6 @@ for ises = 1:numel(nwbsessions)
         psthspon{ispon} = sponspiketrain;
     end
 
-
     save([pathpp, 'psth_spontaneous.mat'], 'neuallloc', 'vis', 'psthspon', '-v7.3')
     toc(sesclk)
 end
